@@ -1,0 +1,50 @@
+plugins {
+    id("com.android.application")
+}
+
+// Release signing: the key comes from GitHub secrets (see .github/workflows/build.yml).
+val keystorePath: String? = System.getenv("SIGNING_KEYSTORE")
+
+android {
+    namespace = "se.jonsolberg.rc500editor"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "se.jonsolberg.rc500editor"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+    }
+
+    // The app shows the same editor as the web version: ../web is bundled as the app's assets.
+    sourceSets {
+        getByName("main") {
+            assets.srcDirs("../web")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = if (keystorePath != null) signingConfigs.getByName("release")
+            else signingConfigs.getByName("debug")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

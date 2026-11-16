@@ -1,0 +1,74 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Decode signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No signing key secret – the APK will be debug-signed."
+          fi
+
+      - name: Build release APK
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          mkdir -p out && cp app/build/outputs/apk/release/app-release.apk out/app.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc500editor-apk
+          path: out/app.apk
+
+      - name: Publish APK to the "apk" branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir /tmp/out && cp out/app.apk /tmp/out/RC500Editor.apk
+          cd /tmp/out
+          git init -q -b apk
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add RC500Editor.apk
+          git commit -qm "APK from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" apk
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=?\s*"\K[^"]+' app/build.gradle* | head -1)
+          TAG="v$VERSION"
+          # Fixed name, so releases/latest/download/RC500Editor.apk always points at the newest build.
+          cp out/app.apk RC500Editor.apk
+          cp out/app.apk "RC500Editor-$VERSION.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "RC500Editor-$VERSION.apk" RC500Editor.apk --clobber
+          else
+            gh release create "$TAG" "RC500Editor-$VERSION.apk" RC500Editor.apk --target "$GITHUB_SHA" \
+              --title "RC-500 Editor $VERSION" --notes "Built from ${GITHUB_SHA::7}." --latest
+          fi
