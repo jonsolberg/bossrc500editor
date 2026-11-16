@@ -154,13 +154,14 @@
     var h = A.h;
     var val = sim.lvl[t];
     var thumb = h('div', { class: 'vthumb' });
-    var track = h('div', { class: 'vtrack' + (enabled ? '' : ' dis'), title: enabled ? 'Track ' + t + ' level' : 'Set up Direct mode to use the slider' }, h('div', { class: 'vgroove' }), thumb);
-    function place(v) { thumb.style.bottom = 'calc(' + (v / 200 * 100) + '% - ' + (v / 200 * 22) + 'px)'; }
+    var ticks = h('div', { class: 'vticks' }); for (var i = 0; i < 7; i++) ticks.appendChild(h('i'));
+    var track = h('div', { class: 'vtrack' + (enabled ? '' : ' dis'), title: enabled ? 'Track ' + t + ' level' : 'Set up Direct mode to use the slider' }, ticks, h('div', { class: 'vgroove' }), thumb);
+    function place(v) { thumb.style.bottom = 'calc(' + (v / 200 * 100) + '% - ' + (v / 200 * 30) + 'px)'; }
     place(val);
     var lastCc = -1;
     function setFromY(y) {
       var r = track.getBoundingClientRect();
-      var v = Math.round(Math.max(0, Math.min(1, (r.bottom - y - 11) / (r.height - 22))) * 200);
+      var v = Math.round(Math.max(0, Math.min(1, (r.bottom - y - 15) / (r.height - 30))) * 200);
       sim.lvl[t] = v; place(v);
       var c = Math.round(v * 127 / 200);
       if (c !== lastCc) { lastCc = c; cc(fn('lvl' + t).cc, c); }
@@ -170,14 +171,14 @@
     if (enabled) {
       track.addEventListener('pointerdown', function (e) { track.setPointerCapture(e.pointerId); setFromY(e.clientY); e.preventDefault(); });
       track.addEventListener('pointermove', function (e) { if (track.hasPointerCapture(e.pointerId)) setFromY(e.clientY); });
-      track.addEventListener('wheel', function (e) { e.preventDefault(); var v = Math.max(0, Math.min(200, sim.lvl[t] + (e.deltaY < 0 ? 5 : -5))); var r = track.getBoundingClientRect(); setFromY(r.bottom - 11 - v / 200 * (r.height - 22)); }, { passive: false });
+      track.addEventListener('wheel', function (e) { e.preventDefault(); var v = Math.max(0, Math.min(200, sim.lvl[t] + (e.deltaY < 0 ? 5 : -5))); var r = track.getBoundingClientRect(); setFromY(r.bottom - 15 - v / 200 * (r.height - 30)); }, { passive: false });
     }
-    return h('div', { class: 'vslider' }, track, out);
+    out.className = 'vval'; return h('div', { class: 'vslider' }, track);
   }
 
   function knob(onStep, title) {
     var h = A.h;
-    var cap = h('div', { class: 'knobcap' }, h('span', { class: 'knobmark' }));
+    var cap = h('div', { class: 'knobcap' }, h('span', { class: 'knobshine' }));
     var k = h('div', { class: 'knob', title: title, tabindex: 0 }, cap);
     var acc = 0, lastY = null, rot = (A.S.cur * 15) % 360;
     cap.style.transform = 'rotate(' + rot + 'deg)';
@@ -195,11 +196,14 @@
     return k;
   }
 
-  /** A footswitch: action on press (timing matters for loop points), optional hold action. */
-  function footswitch(label, enabled, onPress, onHold, keyHint) {
+  /** A footswitch: action on press (timing matters for loop points), optional hold action.
+      The whole area around the small metal switch reacts, so it is easy to hit on a phone. */
+  function footswitch(label, enabled, onPress, onHold, keyHint, ledId, ledCls) {
     var h = A.h;
     var holdTimer = null;
-    var sw = h('button', { class: 'fsw', disabled: !enabled, title: keyHint ? 'Key: ' + keyHint : '' }, h('span', { class: 'fswcap' }));
+    var cap = h('span', { class: 'stomp' });
+    var sw = h('button', { class: 'fsw', disabled: !enabled, title: keyHint ? 'Key: ' + keyHint : '' },
+      h('span', { class: 'fswlabel' }, label), h('span', { id: ledId, class: 'pill ' + (ledCls || '') }), cap);
     sw.addEventListener('pointerdown', function (e) {
       if (e.button) return;
       sw.classList.add('down'); onPress();
@@ -208,8 +212,11 @@
     var up = function () { sw.classList.remove('down'); if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
     sw.addEventListener('pointerup', up); sw.addEventListener('pointerleave', up); sw.addEventListener('pointercancel', up);
     sw.__press = onPress; sw.__hold = onHold;
-    return h('div', { class: 'fswwrap' }, h('span', { class: 'fswlabel' }, label), sw);
+    return h('div', { class: 'fswwrap' }, sw);
   }
+
+  function nameRows() { var n = A.RC0.memName(A.blk()); return [n.slice(0, 6), n.slice(6, 12)]; }
+  function recLed() { var st = sim.tr[sim.cur].st; return st === 'rec' ? 'red' : st === 'play' ? 'green' : st === 'dub' ? 'yellow' : 'white'; }
 
   function stColor(st) { return { empty: 'blue', rec: 'red', play: 'green', dub: 'yellow', stop: 'white' }[st]; }
   function overall() {
@@ -230,14 +237,15 @@
     var st = { empty: '', rec: ' REC', play: ' PLAY', dub: ' DUB', stop: ' STOP' }[sim.tr[sim.cur].st];
     document.getElementById('lcdstate').textContent = 'TRK' + sim.cur + st;
     document.getElementById('lcdno').textContent = A.pad2(A.S.cur + 1);
-    document.getElementById('lcdname').textContent = A.RC0.memName(A.blk()).replace(/\s+$/, '');
+    var nm = nameRows(); document.getElementById('lcdn1').textContent = nm[0]; document.getElementById('lcdn2').textContent = nm[1];
+    var rl = document.getElementById('recled'); if (rl) rl.className = 'pill ' + recLed();
     var te = document.getElementById('lcdtempo'); if (te && performance.now() - clock.last > 1500) te.textContent = '♩' + sim.tempo.toFixed(1);
     [1, 2].forEach(function (t) {
       var l = document.querySelector('[data-tled="' + t + '"]');
-      if (l) l.className = 'led ' + stColor(sim.tr[t].st) + (sim.cur === t ? ' blink' : '');
+      if (l) l.className = 'led sm ' + stColor(sim.tr[t].st) + (sim.cur === t ? ' blink' : '');
     });
-    var r = document.getElementById('rhyled'); if (r) r.className = 'led ' + (sim.rhythm === 'on' ? 'green' : sim.rhythm === 'ready' ? 'green blink' : '');
-    var f = document.getElementById('fxled'); if (f) f.className = 'led ' + (sim.fx ? 'red' : '');
+    var r = document.getElementById('rhyled'); if (r) r.className = 'led xs ' + (sim.rhythm === 'on' ? 'green' : sim.rhythm === 'ready' ? 'green blink' : '');
+    var f = document.getElementById('fxbtn'); if (f) f.classList.toggle('on', sim.fx);
   }
 
   // ------------------------------------------------------------------ page
@@ -252,62 +260,66 @@
 
     var bt = A.P.beatOf(A.mget('RHYTHM', 'Beat'));
     var stateText = { empty: '', rec: 'REC', play: 'PLAY', dub: 'DUB', stop: 'STOP' }[sim.tr[sim.cur].st];
-    var lcd = h('div', { id: 'lcd', class: 'lcd ' + stColor(overall()) },
-      h('div', { class: 'lcd1' }, h('span', { id: 'lcdno', class: 'lcdno' }, A.pad2(mi + 1)), h('span', { id: 'lcdname', class: 'lcdname' }, A.RC0.memName(A.blk()).replace(/\s+$/, ''))),
-      h('div', { class: 'lcd2' },
-        h('span', { id: 'lcdstate' }, 'TRK' + sim.cur + (stateText ? ' ' + stateText : '')),
-        h('span', { id: 'lcdtempo' }, '♩' + sim.tempo.toFixed(1)),
-        h('span', null, bt[0] + '/' + bt[1])));
-
-    function trackCol(t) {
-      var st = sim.tr[t].st;
-      return h('div', { class: 'trackcol' },
-        h('div', { class: 'tlabel' }, 'TRACK ' + t),
-        h('div', { class: 'trackrow' }, vslider(t, ok('lvl' + t)),
-          h('div', { class: 'tled' }, h('span', { class: 'led ' + stColor(st) + (sim.cur === t ? ' blink' : ''), 'data-tled': t }))),
-        h('button', {
-          class: 'pbtn small', disabled: !ok('trk'), title: 'Make track ' + t + ' the current track', onclick: function () {
-            sim.cur = t; cc(fn('trk').cc, t === 2 ? 127 : 0); updateLights();
-          }
-        }, 'EDIT'));
+    var nm = nameRows();
+    // Positions are in panel pixels (920 × 714), measured from the real pedal's top panel.
+    function at(x, y, el) { el.style.left = x + 'px'; el.style.top = y + 'px'; return el; }
+    function label(x, y, text, cls) { return at(x, y, h('span', { class: 'plabel ' + (cls || '') }, text)); }
+    function sqbtn(x, y, text, enabled, onclick, title) {
+      return [label(x, 308, text), at(x, y, h('button', { class: 'sq', disabled: !enabled, title: title || text, onclick: onclick }))];
     }
+    var rhyLed = sim.rhythm === 'on' ? 'green' : sim.rhythm === 'ready' ? 'green blink' : '';
 
     var rec = footswitch('REC/PLAY', ok('rec'), function () { press(fn('rec')); recPlay(); updateLights(); setTimeout(function () { release(fn('rec')); }, 60); },
-      have.undo ? function () { press(fn('undo')); setTimeout(function () { release(fn('undo')); }, 60); A.toast('Undo/redo'); } : null, 'Space');
+      have.undo ? function () { press(fn('undo')); setTimeout(function () { release(fn('undo')); }, 60); A.toast('Undo/redo'); } : null, 'Space', 'recled', recLed());
     var stop = footswitch('STOP', ok('stop'), function () { press(fn('stop')); stopTrack(); updateLights(); setTimeout(function () { release(fn('stop')); }, 60); },
-      have.clear ? function () { press(fn('clear')); setTimeout(function () { release(fn('clear')); }, 60); sim.tr[sim.cur].st = 'empty'; updateLights(); A.toast('Track ' + sim.cur + ' cleared'); } : null, 'S (hold: clear)');
-    var sel = footswitch('TRACK SELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T');
+      have.clear ? function () { press(fn('clear')); setTimeout(function () { release(fn('clear')); }, 60); sim.tr[sim.cur].st = 'empty'; updateLights(); A.toast('Track ' + sim.cur + ' cleared'); } : null, 'S (hold: clear)', 'stopled', 'white');
+    var sel = footswitch('TRACK\nSELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T', 'trkled', 'red');
     keyActions = { ' ': rec, s: stop, t: sel };
 
-    var rhyLed = sim.rhythm === 'on' ? 'green' : sim.rhythm === 'ready' ? 'green blink' : '';
     var panel = h('div', { class: 'rcpanel' },
-      h('div', { class: 'rctop' },
-        h('div', { class: 'tracks' }, trackCol(1), trackCol(2)),
-        h('div', { class: 'center' },
-          h('div', { class: 'brandrow' }, h('span', { class: 'model' }, 'RC-500'), h('span', { class: 'sub' }, 'Loop Station')),
-          lcd,
-          h('div', { class: 'btnrow2' },
-            h('div', { class: 'rhythm' }, h('span', { class: 'grp' }, 'RHYTHM'),
-              h('div', { class: 'rbtns' },
-                h('div', { class: 'lbtn' }, led('red tempoled'), h('button', {
-                  class: 'pbtn', disabled: !ok('tap'), title: have.tap ? 'Tap tempo (key: Enter)' : 'Add TAP TEMPO in “Set up memories” to use this',
-                  onclick: tap
-                }, 'TEMPO')),
-                h('div', { class: 'lbtn' }, h('span', { id: 'rhyled', class: 'led ' + rhyLed }), h('button', {
-                  class: 'pbtn', disabled: !ok('rhy'), title: 'Rhythm play/stop (key: R)', onclick: rhythm
-                }, 'ON/OFF')))),
-            h('div', { class: 'lbtn' }, h('span', { class: 'led none' }), h('button', { class: 'pbtn', title: 'Edit this memory', onclick: function () { A.go('memory'); } }, 'MEMORY')),
-            h('div', { class: 'lbtn' }, h('span', { class: 'led none' }), h('button', { class: 'pbtn', title: 'System settings', onclick: function () { A.go('system'); } }, 'MENU')))),
-        h('div', { class: 'right' },
-          h('div', { class: 'knobwrap' }, knob(function (d) {
-            var n = Math.max(0, Math.min(98, A.S.cur + d));
-            if (n !== A.S.cur) { A.selectMemory(n, false, true); updateLights(); }
-          }, 'MEMORY/VALUE: turn to change memory'), h('span', { class: 'klabel' }, 'MEMORY/VALUE')),
-          h('div', { class: 'fxrow' }, h('div', { class: 'lbtn' }, h('span', { id: 'fxled', class: 'led ' + (sim.fx ? 'red' : '') }), h('button', {
-            class: 'pbtn', disabled: !ok('fx'), title: have.fx ? 'Loop FX on/off (key: F)' : 'Add LOOP FX in “Set up memories” to use this', onclick: loopFx
-          }, 'LOOP FX'))))),
-      h('div', { class: 'rcbottom' }, rec, stop, sel));
-
+      // jacks along the top edge
+      [144, 393, 473, 560, 660].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
+      at(887, 40, h('div', { class: 'logo' }, h('span', { class: 'ls' }, 'LOOP STATION'), h('span', { class: 'mdl' }, 'RC-500'))),
+      // track sliders
+      at(116, 164, vslider(1, ok('lvl1'))), at(211, 164, vslider(2, ok('lvl2'))),
+      label(117, 269, '1'), label(164, 269, 'TRACK'), label(211, 269, '2'),
+      at(117, 289, h('span', { class: 'led sm ' + stColor(sim.tr[1].st) + (sim.cur === 1 ? ' blink' : ''), 'data-tled': 1 })),
+      at(211, 289, h('span', { class: 'led sm ' + stColor(sim.tr[2].st) + (sim.cur === 2 ? ' blink' : ''), 'data-tled': 2 })),
+      [1, 2].map(function (t) {
+        return sqbtn(t === 1 ? 117 : 211, 340, 'EDIT', ok('trk'), function () { sim.cur = t; cc(fn('trk').cc, t === 2 ? 127 : 0); updateLights(); }, 'Make track ' + t + ' the current track');
+      }),
+      at(263, 237, h('span', { class: 'vline' })), at(731, 237, h('span', { class: 'vline' })),
+      // display
+      at(439, 174, h('div', { class: 'lcdframe' },
+        h('div', { id: 'lcd', class: 'lcd ' + stColor(overall()) },
+          h('span', { id: 'lcdno', class: 'lcdno' }, A.pad2(mi + 1)),
+          h('span', { class: 'lcdname' }, h('span', { id: 'lcdn1' }, nm[0]), h('span', { id: 'lcdn2' }, nm[1]))),
+        h('div', { class: 'lcdinfo' }, h('span', { id: 'lcdstate' }, 'TRK' + sim.cur + (stateText ? ' ' + stateText : '')),
+          h('span', { id: 'lcdtempo' }, '♩' + sim.tempo.toFixed(1)), h('span', null, bt[0] + '/' + bt[1])))),
+      // MEMORY/VALUE and MIC LEVEL
+      label(647, 103, 'MEMORY/\nVALUE'),
+      at(647, 168, knob(function (d) {
+        var n = Math.max(0, Math.min(98, A.S.cur + d));
+        if (n !== A.S.cur) { A.selectMemory(n, false, true); updateLights(); }
+      }, 'MEMORY/VALUE: turn to change memory')),
+      label(796, 113, 'MIC LEVEL'),
+      at(796, 168, h('div', { class: 'miclevel', title: 'MIC LEVEL (only on the pedal)' }, h('span', { class: 'micmark' }), h('span', { class: 'mtick l' }), h('span', { class: 'mtick r' }))),
+      at(797, 287, h('span', { class: 'led xs' })),
+      sqbtn(796, 340, 'INPUT', false, null, 'INPUT (only on the pedal)'),
+      // rhythm + menu buttons
+      label(343, 269, 'RHYTHM'),
+      at(305, 287, h('span', { class: 'led xs red tempoled' })),
+      at(381, 287, h('span', { id: 'rhyled', class: 'led xs ' + rhyLed })),
+      sqbtn(305, 340, 'TEMPO', ok('tap'), tap, have.tap ? 'Tap tempo (key: Enter)' : 'Add TAP TEMPO in “Set up memories” to use this'),
+      sqbtn(381, 340, 'ON/OFF', ok('rhy'), rhythm, 'Rhythm play/stop (key: R)'),
+      sqbtn(457, 340, 'MEMORY', true, function () { A.go('memory'); }, 'Edit this memory'),
+      sqbtn(533, 340, 'MENU', true, function () { A.go('system'); }, 'System settings'),
+      label(647, 281, 'WRITE'), at(647, 296, h('span', { class: 'hline' })),
+      sqbtn(609, 340, 'EXIT', false, null, 'EXIT (only on the pedal)'),
+      sqbtn(685, 340, 'ENTER', false, null, 'ENTER (only on the pedal)'),
+      at(460, 420, h('span', { class: 'seam' })),
+      // footswitches
+      at(108, 572, rec), at(456, 572, stop), at(807, 572, sel));
     var wrap = h('div', { class: 'rcwrap' }, panel);
     requestAnimationFrame(function () { fit(wrap, panel); });
 
@@ -320,6 +332,7 @@
       h('div', { class: 'tools' },
         h('button', { disabled: !conn, onclick: function () { A.midiSend([0xFA]); ['1', '2'].forEach(function (t) { if (sim.tr[t].st === 'stop') sim.tr[t].st = 'play'; }); if (sim.rhythm === 'ready') sim.rhythm = 'on'; updateLights(); }, title: 'MIDI Start: start all tracks' }, '▶ All start'),
         h('button', { disabled: !conn, onclick: function () { A.midiSend([0xFC]); ['1', '2'].forEach(function (t) { var s = sim.tr[t]; if (s.st !== 'empty') s.st = 'stop'; }); updateLights(); }, title: 'MIDI Stop: stop everything' }, '■ All stop'),
+        have.fx ? h('button', { id: 'fxbtn', class: sim.fx ? 'on' : '', disabled: !conn, onclick: loopFx, title: 'Loop FX on/off (key: F)' }, 'LOOP FX') : null,
         h('button', { onclick: setupDialog }, 'Set up memories…'),
         h('button', { onclick: function () { resetSim(); A.render(); }, title: 'Reset the lights to the memory’s saved state' }, '↺ Lights'))),
     notes, wrap,
@@ -342,9 +355,7 @@
 
   /** Scale the fixed-size panel to the available width. */
   function fit(wrap, panel) {
-    var w = wrap.clientWidth || 900;
-    wrap.classList.toggle('narrow', w < 640);
-    var s = Math.min(1.25, w / (w < 640 ? 560 : 920));
+    var w = wrap.clientWidth || 900, s = Math.min(1.2, w / 920, Math.max(0.45, (window.innerHeight - 190) / 714));
     panel.style.transform = 'scale(' + s + ')';
     wrap.style.height = Math.ceil(panel.offsetHeight * s) + 'px';
   }
