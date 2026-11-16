@@ -266,6 +266,7 @@
     return out.name;
   };
   Midi.prototype.disconnect = function () {
+    this.clockStop();
     if (isAndroid) { try { Native.midiClose(); } catch (e) { } }
     else if (this._in) this._in.onmidimessage = null;
     this.connected = false;
@@ -276,6 +277,39 @@
     if (isAndroid) nativeSync(Native.midiSend(bytesToB64(new Uint8Array(bytes))));
     else this._out.send(bytes);
   };
+  /**
+   * MIDI clock to the pedal (24 ticks per quarter note). With SYNC CLOCK = AUTO or USB the RC-500
+   * follows it. No Start/Stop is sent, so the tracks are not started by the clock.
+   * Web: ticks are scheduled ahead with Web MIDI timestamps. Android: a native thread sends them.
+   */
+  Midi.prototype.clockStart = function (bpm, onBeat) {
+    var self = this;
+    self.clockBpm = bpm; self.clockRunning = true; self._onBeat = onBeat;
+    if (isAndroid) { root.__rcBeat = function () { if (self._onBeat) self._onBeat(); }; nativeSync(Native.midiClockStart(bpm)); return; }
+    if (self._clk) return;
+    var next = performance.now() + 30, n = 0;
+    function pump() {
+      if (!self.connected) { self.clockStop(); return; }
+      var now = performance.now(), ahead = now + (document.hidden ? 1500 : 150);
+      if (next < now - 200) next = now + 10; // we fell behind (sleeping tab): restart cleanly
+      while (next < ahead) {
+        try { self._out.send([0xF8], next); } catch (e) { self.clockStop(); return; }
+        if (n % 24 === 0 && self._onBeat) setTimeout(self._onBeat, Math.max(0, next - now));
+        n++; next += 60000 / (self.clockBpm * 24);
+      }
+    }
+    self._clk = setInterval(pump, 25); pump();
+  };
+  Midi.prototype.clockSet = function (bpm) {
+    this.clockBpm = bpm;
+    if (isAndroid && this.clockRunning) nativeSync(Native.midiClockSet(bpm));
+  };
+  Midi.prototype.clockStop = function () {
+    this.clockRunning = false;
+    if (isAndroid) { try { Native.midiClockStop(); } catch (e) { } return; }
+    if (this._clk) { clearInterval(this._clk); this._clk = null; }
+  };
+
   /** Ask the pedal for its edit (storage) mode. Resolves 0 off / 1 on / 2 busy / -1 no answer. */
   Midi.prototype.queryEditMode = function (timeout) {
     var self = this;

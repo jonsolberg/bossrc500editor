@@ -222,7 +222,8 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .rcpanel button.sq { width: 40px; height: 38px; padding: 0; border-radius: 5px; border: 0; cursor: pointer;
   background: linear-gradient(180deg, #2a2b2e, #111214); box-shadow: 0 3px 0 #4a0a0d, 0 4px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.12); }
 .rcpanel button.sq:active:not(:disabled) { transform: translate(-50%, calc(-50% + 2px)); box-shadow: 0 1px 0 #4a0a0d, inset 0 1px 0 rgba(255,255,255,.08); }
-.rcpanel button.sq:disabled { cursor: default; opacity: .8; }
+.rcpanel button.sq:disabled { cursor: default; opacity: .4; filter: grayscale(1); }
+.miclevel { opacity: .45; filter: grayscale(1); }
 .rcpanel button.sq:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 .lcdframe { width: 256px; height: 108px; border-radius: 6px; background: #0b0b0c; box-shadow: inset 0 0 0 2px #1d1d20, 0 1px 0 rgba(255,255,255,.2);
@@ -279,3 +280,10 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .dfunc .ccn { width: 44px; }
 .info.warn { color: var(--danger); background: none; padding: 0; }
 @media (max-width: 820px) { .keyhelp { display: none; } }
+
+.clockstrip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; margin: 4px 0 10px; max-width: 1110px; }
+.clockstrip.on { border-color: var(--accent); }
+.clockstrip .clabel { font-weight: 600; margin-right: 4px; }
+.clockstrip input { width: 80px; }
+.clockstrip .note:last-child { flex-basis: 100%; }

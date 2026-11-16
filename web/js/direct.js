@@ -21,7 +21,6 @@
     { id: 'rhy', cc: 85, target: 'RHYTHM P/S', label: 'Rhythm ON/OFF button', def: true },
     { id: 'clear', cc: 86, target: 'CUR CLEAR', label: 'Hold STOP 2 s: clear the track', def: true },
     { id: 'undo', cc: 87, target: 'UNDO/REDO', label: 'Hold REC/PLAY 2 s: undo/redo', def: true },
-    { id: 'tap', cc: 88, target: 'TAP TEMPO', label: 'TEMPO button (tap tempo)', def: false },
     { id: 'fx', cc: 89, target: 'LOOP FX', label: 'LOOP FX on/off', def: false, min: 0, max: 1 }
   ];
   var HOLD_MS = 2000;
@@ -239,7 +238,8 @@
     document.getElementById('lcdno').textContent = A.pad2(A.S.cur + 1);
     var nm = nameRows(); document.getElementById('lcdn1').textContent = nm[0]; document.getElementById('lcdn2').textContent = nm[1];
     var rl = document.getElementById('recled'); if (rl) rl.className = 'pill ' + recLed();
-    var te = document.getElementById('lcdtempo'); if (te && performance.now() - clock.last > 1500) te.textContent = '♩' + sim.tempo.toFixed(1);
+    var te = document.getElementById('lcdtempo'); if (te && (A.S.midi.clockRunning || performance.now() - clock.last > 1500)) te.textContent = '♩' + shownTempo().toFixed(1);
+    var cs = document.getElementById('clockstrip'); if (cs) cs.classList.toggle('on', !!A.S.midi.clockRunning);
     [1, 2].forEach(function (t) {
       var l = document.querySelector('[data-tled="' + t + '"]');
       if (l) l.className = 'led sm ' + stColor(sim.tr[t].st) + (sim.cur === t ? ' blink' : '');
@@ -295,7 +295,7 @@
           h('span', { id: 'lcdno', class: 'lcdno' }, A.pad2(mi + 1)),
           h('span', { class: 'lcdname' }, h('span', { id: 'lcdn1' }, nm[0]), h('span', { id: 'lcdn2' }, nm[1]))),
         h('div', { class: 'lcdinfo' }, h('span', { id: 'lcdstate' }, 'TRK' + sim.cur + (stateText ? ' ' + stateText : '')),
-          h('span', { id: 'lcdtempo' }, '♩' + sim.tempo.toFixed(1)), h('span', null, bt[0] + '/' + bt[1])))),
+          h('span', { id: 'lcdtempo' }, '♩' + shownTempo().toFixed(1)), h('span', null, bt[0] + '/' + bt[1])))),
       // MEMORY/VALUE and MIC LEVEL
       label(647, 103, 'MEMORY/\nVALUE'),
       at(647, 168, knob(function (d) {
@@ -310,7 +310,7 @@
       label(343, 269, 'RHYTHM'),
       at(305, 287, h('span', { class: 'led xs red tempoled' })),
       at(381, 287, h('span', { id: 'rhyled', class: 'led xs ' + rhyLed })),
-      sqbtn(305, 340, 'TEMPO', ok('tap'), tap, have.tap ? 'Tap tempo (key: Enter)' : 'Add TAP TEMPO in “Set up memories” to use this'),
+      sqbtn(305, 340, 'TEMPO', conn, tap, 'Tap the tempo (key: Enter). The editor sends it to the pedal as MIDI clock.'),
       sqbtn(381, 340, 'ON/OFF', ok('rhy'), rhythm, 'Rhythm play/stop (key: R)'),
       sqbtn(457, 340, 'MEMORY', true, function () { A.go('memory'); }, 'Edit this memory'),
       sqbtn(533, 340, 'MENU', true, function () { A.go('system'); }, 'System settings'),
@@ -335,16 +335,49 @@
         have.fx ? h('button', { id: 'fxbtn', class: sim.fx ? 'on' : '', disabled: !conn, onclick: loopFx, title: 'Loop FX on/off (key: F)' }, 'LOOP FX') : null,
         h('button', { onclick: setupDialog }, 'Set up memories…'),
         h('button', { onclick: function () { resetSim(); A.render(); }, title: 'Reset the lights to the memory’s saved state' }, '↺ Lights'))),
-    notes, wrap,
+    notes, wrap, clockStrip(conn),
     h('p', { class: 'info keyhelp' }, 'Keys: Space = REC/PLAY (hold: undo), S = STOP (hold: clear), T = TRACK SELECT, R = rhythm, Enter = tap tempo, F = loop FX, ↑/↓ = memory. ' +
       'The pedal doesn’t report its track states, so the lights follow your presses here; use ↺ Lights if they get out of step.')];
   }
 
-  function tap() {
-    press(fn('tap')); setTimeout(function () { release(fn('tap')); }, 40);
-    var now = performance.now(); sim.tapTimes = sim.tapTimes.filter(function (t) { return now - t < 2500; }); sim.tapTimes.push(now);
-    if (sim.tapTimes.length >= 2) { sim.tempo = Math.max(40, Math.min(300, 60000 / ((now - sim.tapTimes[0]) / (sim.tapTimes.length - 1)))); var el = document.getElementById('lcdtempo'); if (el) el.textContent = '♩' + sim.tempo.toFixed(1); restartTempo(); }
+  // ------------------------------------------------------------------ tempo: MIDI clock from the editor
+  var clockBpm = null, taps = [];
+  function shownTempo() { return A.S.midi.clockRunning ? clockBpm : sim.tempo; }
+  function setClock(bpm, start) {
+    clockBpm = Math.round(Math.max(40, Math.min(300, bpm)) * 10) / 10;
+    var m = A.S.midi;
+    try {
+      if (m.clockRunning) m.clockSet(clockBpm);
+      else if (start && m.connected) m.clockStart(clockBpm, blink);
+    } catch (e) { A.toast(e.message, 'err'); }
+    var inp = document.getElementById('clockbpm'); if (inp && document.activeElement !== inp) inp.value = clockBpm.toFixed(1);
+    updateLights();
   }
+  function tap() {
+    var now = performance.now();
+    taps = taps.filter(function (t) { return now - t < 2500; }); taps.push(now);
+    blink();
+    if (taps.length >= 2) setClock(60000 / ((now - taps[0]) / (taps.length - 1)), true);
+  }
+  function clockStrip(conn) {
+    var h = A.h, m = A.S.midi;
+    if (clockBpm === null) clockBpm = sim.tempo;
+    var inp = h('input', { id: 'clockbpm', type: 'number', min: 40, max: 300, step: 0.5, value: clockBpm.toFixed(1),
+      onchange: function () { var v = parseFloat(inp.value); if (!isNaN(v)) setClock(v, false); } });
+    return h('div', { id: 'clockstrip', class: 'clockstrip' + (m.clockRunning ? ' on' : '') },
+      h('span', { class: 'clabel' }, 'Tempo to the pedal'),
+      h('button', { class: 'small', onclick: function () { setClock(clockBpm - 1, false); } }, '−'), inp,
+      h('button', { class: 'small', onclick: function () { setClock(clockBpm + 1, false); } }, '+'), h('span', { class: 'note' }, 'BPM'),
+      h('button', { class: 'small', title: 'Use this memory’s saved tempo', onclick: function () { setClock(sim.tempo, false); } }, 'Memory tempo'),
+      h('button', {
+        id: 'clockbtn', class: m.clockRunning ? 'primary' : '', disabled: !conn, onclick: function () {
+          if (m.clockRunning) m.clockStop(); else setClock(clockBpm, true);
+          A.render();
+        }
+      }, m.clockRunning ? '■ Stop clock' : '▶ Send clock'),
+      h('span', { class: 'note' }, 'The pedal follows the clock while it runs (SYSTEM › MIDI › Sync clock: AUTO or USB). Tap TEMPO to set it.'));
+  }
+
   function rhythm() {
     press(fn('rhy')); setTimeout(function () { release(fn('rhy')); }, 60);
     sim.rhythm = sim.rhythm === 'on' ? 'off' : 'on'; updateLights();
@@ -365,7 +398,7 @@
   function blink() { var el = document.querySelector('.tempoled'); if (!el) return; el.classList.add('on'); setTimeout(function () { el.classList.remove('on'); }, 90); }
   function restartTempo() {
     if (tempoTimer) clearInterval(tempoTimer);
-    tempoTimer = setInterval(function () { if (performance.now() - clock.last < 600) return; blink(); }, 60000 / ((sim && sim.tempo) || 120));
+    tempoTimer = setInterval(function () { if (A.S.midi.clockRunning || performance.now() - clock.last < 600) return; blink(); }, 60000 / ((sim && sim.tempo) || 120));
   }
   clock.last = 0;
 
@@ -401,7 +434,7 @@
     if (e.type !== 'keydown') return false;
     var installedNow = installed(A.S.cur), conn = A.S.midi.connected;
     if (k === 'r' && conn && installedNow.rhy) { rhythm(); return true; }
-    if (k === 'Enter' && conn && installedNow.tap) { tap(); return true; }
+    if (k === 'Enter' && conn) { tap(); return true; }
     if (k === 'f' && conn && installedNow.fx) { loopFx(); return true; }
     if (k === 'ArrowUp' || k === 'ArrowDown') { A.selectMemory(Math.max(0, Math.min(98, A.S.cur + (k === 'ArrowUp' ? 1 : -1)))); e.preventDefault(); return true; }
     return false;

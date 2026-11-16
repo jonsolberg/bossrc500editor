@@ -13,7 +13,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 
 - **Direct mode**: play the pedal live from an on-screen copy of its panel — REC/PLAY, STOP and TRACK SELECT
   footswitches (hold REC/PLAY to undo, hold STOP to clear), TRACK 1/2 level sliders with status lights, the colour
-  display, rhythm ON/OFF and TEMPO, LOOP FX and the MEMORY/VALUE knob. Keyboard shortcuts on a computer
+  display, rhythm ON/OFF, TEMPO (tap or type a tempo; sent as MIDI clock), LOOP FX and the MEMORY/VALUE knob. Keyboard shortcuts on a computer
   (Space, S, T, R, F, ↑/↓). The RC-500 only reacts to MIDI CC through a memory's ASSIGNs, so *Set up memories*
   adds the needed ASSIGNs (CC#80–89, see below) to the memories you choose; then save them to the pedal
 - **All 99 memories**: name, both tracks (level, pan, reverse, 1-shot, loop FX, start/stop, measure, loop/tempo sync,
@@ -61,8 +61,11 @@ Web MIDI and direct writing only work on secure (https) pages, so use the GitHub
 | 85 | RHYTHM P/S | Rhythm ON/OFF |
 | 86 | CUR CLEAR | hold STOP |
 | 87 | UNDO/REDO | hold REC/PLAY |
-| 88 | TAP TEMPO (optional) | TEMPO |
 | 89 | LOOP FX (optional) | LOOP FX |
+
+**Tempo** needs no ASSIGN: the editor sends MIDI clock over USB (set the tempo, or tap TEMPO). The pedal follows it
+while it runs when SYSTEM › MIDI › Sync clock is AUTO (the default) or USB. No MIDI Start is sent, so the tracks
+don't start by themselves.
 
 Messages go out on the pedal's RX CTL channel (SYSTEM › MIDI). Memories are selected with program change, and
 MIDI Start/Stop start and stop everything. The pedal doesn't report its track states over MIDI, so the lights on

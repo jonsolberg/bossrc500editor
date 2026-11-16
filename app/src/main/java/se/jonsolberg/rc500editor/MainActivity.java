@@ -45,6 +45,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Hosts the bundled editor (assets = the web version) in a WebView and gives it access to the
@@ -74,6 +75,11 @@ public class MainActivity extends Activity {
     private MidiInputPort midiIn;   // we send into the pedal's input port
     private MidiOutputPort midiOut; // and listen on its output port
     private MidiManager.DeviceCallback deviceCallback;
+
+    // MIDI clock to the pedal
+    private volatile double clockBpm = 120;
+    private volatile boolean clockRun;
+    private Thread clockThread;
 
     private static class Out {
         final ParcelFileDescriptor pfd; final OutputStream os;
@@ -296,7 +302,35 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------ MIDI
 
+    private void startClock() {
+        if (clockThread != null && clockThread.isAlive()) return;
+        clockRun = true;
+        clockThread = new Thread(() -> {
+            final byte[] tick = {(byte) 0xF8};
+            long next = System.nanoTime();
+            int n = 0;
+            while (clockRun) {
+                long now = System.nanoTime();
+                if (now < next) { LockSupport.parkNanos(next - now); continue; }
+                MidiInputPort p = midiIn;
+                if (p != null) try { p.send(tick, 0, 1); } catch (IOException ignored) { }
+                if (n++ % 24 == 0) ui.post(() -> web.evaluateJavascript("window.__rcBeat&&__rcBeat()", null));
+                next += (long) (60e9 / (clockBpm * 24));
+                if (System.nanoTime() - next > 100_000_000L) next = System.nanoTime(); // fell far behind: resync
+            }
+        }, "midi-clock");
+        clockThread.setPriority(Thread.MAX_PRIORITY);
+        clockThread.start();
+    }
+
+    private void stopClock() {
+        clockRun = false;
+        if (clockThread != null) clockThread.interrupt();
+        clockThread = null;
+    }
+
     private void closeMidi() {
+        stopClock();
         try { if (midiOut != null) midiOut.close(); } catch (IOException ignored) { }
         try { if (midiIn != null) midiIn.close(); } catch (IOException ignored) { }
         try { if (midiDevice != null) midiDevice.close(); } catch (IOException ignored) { }
@@ -521,6 +555,20 @@ public class MainActivity extends Activity {
             try { byte[] b = Base64.decode(b64, Base64.DEFAULT); p.send(b, 0, b.length); return "ok"; }
             catch (Exception e) { return err(e); }
         }
+
+        @JavascriptInterface
+        public String midiClockStart(double bpm) {
+            if (midiIn == null) return "ERR:MIDI not connected";
+            clockBpm = Math.max(20, Math.min(300, bpm));
+            startClock();
+            return "ok";
+        }
+
+        @JavascriptInterface
+        public String midiClockSet(double bpm) { clockBpm = Math.max(20, Math.min(300, bpm)); return "ok"; }
+
+        @JavascriptInterface
+        public void midiClockStop() { stopClock(); }
 
         @JavascriptInterface
         public void midiClose() { ui.post(MainActivity.this::closeMidi); }
