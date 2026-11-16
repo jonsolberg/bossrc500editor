@@ -420,7 +420,7 @@
   }
 
   function onMidi(m) {
-    if (!sim) return;
+    if (!sim || typeof m === 'string') return;
     if (A && sim.mem !== A.S.cur) resetSim();
     fromPedal(m);
     if (m[0] === 0xF8) {

@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.8';
+  var VERSION = '1.9';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -647,6 +647,7 @@
   S.midi.onOut = function (b) { logMidi('out', b); };
   S.midi.onMessage(function (m) {
     if (m === null) { toast('MIDI device disconnected', 'err'); render(); return; }
+    if (m === 'reconnected') { toast('Reconnected to ' + S.midi.name); logMidi('mark', null, '──── reconnected ────'); render(); return; }
     if (window.RCDirect) RCDirect.onMidi(m);
     if (m.length === 1 && m[0] >= 0xF8 && m[0] !== 0xFA && m[0] !== 0xFC) return; // clock etc.
     logMidi('in', m);

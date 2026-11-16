@@ -258,8 +258,17 @@
     inp = inp || pick(ins);
     self._out = out; self._in = inp;
     if (inp) inp.onmidimessage = function (ev) { self._emit(ev.data); };
+    var wantName = out.name;
     access.onstatechange = function (ev) {
-      if (ev.port === self._out && ev.port.state === 'disconnected') { self.connected = false; self._emit(null); }
+      var p = ev.port;
+      if (p.name !== wantName) return;
+      if (p.state === 'disconnected') {
+        if (p.type === 'output' && self.connected) { self.connected = false; self._emit(null); }
+        return;
+      }
+      // The pedal came back (power cycle, cable): pick up the new ports automatically.
+      if (p.type === 'output') { self._out = p; if (!self.connected) { self.connected = true; self._emit('reconnected'); } }
+      if (p.type === 'input') { if (self._in && self._in !== p) self._in.onmidimessage = null; self._in = p; p.onmidimessage = function (e) { self._emit(e.data); }; }
     };
     self.connected = true; self.name = out.name;
     self.ports = outs.map(function (p) { return p.name; });
