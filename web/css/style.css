@@ -140,7 +140,7 @@ button.transport { font-size: 16px; padding: 10px 20px; }
 .ccn { color: var(--muted); font-variant-numeric: tabular-nums; }
 button.pad { padding: 12px; text-align: left; overflow: hidden; text-overflow: ellipsis; touch-action: none; user-select: none; }
 button.pad.on { background: var(--accent); color: var(--accent-ink); }
-.midilog { font: 12.5px ui-monospace, Consolas, monospace; max-height: 260px; overflow-y: auto; }
+.midilog { font: 12.5px ui-monospace, Consolas, monospace; max-height: 420px; overflow-y: auto; margin-top: 8px; }
 .midilog .in { color: var(--accent); }
 .midilog .out { color: var(--muted); }
 
@@ -287,3 +287,4 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .clockstrip .clabel { font-weight: 600; margin-right: 4px; }
 .clockstrip input { width: 80px; }
 .clockstrip .note:last-child { flex-basis: 100%; }
+.midilog .mark { color: var(--text); font-weight: 700; margin: 4px 0; }

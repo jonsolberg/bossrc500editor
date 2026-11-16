@@ -229,6 +229,7 @@
     var page = { memory: pageMemory, system: pageSystem, loops: pageLoops, remote: pageRemote, about: pageAbout, direct: function () { return RCDirect.page(API); } }[S.page];
     add(main, page());
     main.scrollTop = st;
+    renderMidiLog();
   }
 
   function beatIdx() { return mget('RHYTHM', 'Beat'); }
@@ -593,10 +594,18 @@
   }
 
   // ------------------------------------------------------------------ remote (MIDI)
-  function logMidi(dir, m) {
-    S.midiLog.unshift({ dir: dir, text: describe(m) });
-    if (S.midiLog.length > 40) S.midiLog.pop();
-    var el = $('midilog'); if (el) el.innerHTML = '', S.midiLog.forEach(function (l) { el.appendChild(h('div', { class: l.dir }, (l.dir === 'in' ? '← ' : '→ ') + l.text)); });
+  var markNo = 0;
+  function logMidi(dir, m, text) {
+    var d = new Date();
+    var ts = pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + '.' + String(d.getMilliseconds()).padStart(3, '0').slice(0, 2);
+    S.midiLog.unshift({ dir: dir, text: ts + '  ' + (text || describe(m)) });
+    if (S.midiLog.length > 200) S.midiLog.pop();
+    renderMidiLog();
+  }
+  function renderMidiLog() {
+    var el = $('midilog'); if (!el) return;
+    el.innerHTML = '';
+    S.midiLog.forEach(function (l) { el.appendChild(h('div', { class: l.dir }, l.dir === 'mark' ? l.text : (l.dir === 'in' ? '← ' : '→ ') + l.text)); });
   }
   function describe(m) {
     var s = m[0], t = s & 0xF0, ch = (s & 15) + 1;
@@ -605,7 +614,11 @@
     if (t === 0x90) return 'Note on ' + m[1] + ' vel ' + m[2] + ' (ch ' + ch + ')';
     if (t === 0x80) return 'Note off ' + m[1] + ' (ch ' + ch + ')';
     if (s === 0xFA) return 'Start'; if (s === 0xFC) return 'Stop'; if (s === 0xFB) return 'Continue';
-    if (s === 0xF0) { var e = PF.SYSEX.editMode(m); if (e >= 0) return 'Storage mode: ' + ['off', 'on', 'busy'][e]; }
+    if (s === 0xF0) {
+      var e = PF.SYSEX.editMode(m); if (e >= 0) return 'Storage mode: ' + ['off', 'on', 'busy'][e];
+      if (m.length === 13 && m[1] === 0x41 && m[3] === 0 && m[4] === 0 && m[5] === 0x72 && m[6] === 0x12)
+        return 'Pedal status ' + PF.hex([m[7], m[8], m[9]]) + ' = ' + PF.hex([m[10]]) + ' (bits ' + ('0000000' + m[10].toString(2)).slice(-8) + ')';
+    }
     return PF.hex(m);
   }
   function midiSend(bytes) {
@@ -695,7 +708,14 @@
         row('CC#', num(genCc.n, 0, 127, function (v) { S.genCc = v; render(); })),
         ccPad(genCc.n, 'CC#' + genCc.n, 0)
       ]),
-      card('MIDI monitor', h('div', { id: 'midilog', class: 'midilog' }, S.midiLog.map(function (l) { return h('div', { class: l.dir }, (l.dir === 'in' ? '← ' : '→ ') + l.text); })))
+      card('MIDI monitor', [h('div', { class: 'btnrow' },
+        h('button', { class: 'small', onclick: function () { markNo++; logMidi('mark', null, '──── mark ' + markNo + ' ────'); }, title: 'Add a divider, to see which messages belong to which press' }, '＋ Mark'),
+        h('button', { class: 'small', onclick: function () { S.midiLog = []; markNo = 0; renderMidiLog(); } }, 'Clear'),
+        h('button', { class: 'small', onclick: function () {
+          var txt = S.midiLog.slice().reverse().map(function (l) { return (l.dir === 'in' ? '<- ' : l.dir === 'out' ? '-> ' : '') + l.text; }).join('\n');
+          try { navigator.clipboard.writeText(txt).then(function () { toast('Monitor copied — paste it in the chat'); }); } catch (e) { errToast(e); }
+        }, title: 'Copy the log (oldest first) as text' }, 'Copy')),
+        h('div', { id: 'midilog', class: 'midilog' })])
     )];
   }
 
