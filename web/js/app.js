@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.14';
+  var VERSION = '1.15';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -205,7 +205,13 @@
         S.loops && S.loops[i] && (S.loops[i][1] || S.loops[i][2]) ? h('span', { class: 'wav', title: 'Has recorded loop' }, '●') : null);
       ul.appendChild(li);
     });
-    var selEl = ul.querySelector('.sel'); if (selEl && selEl.scrollIntoViewIfNeeded) selEl.scrollIntoViewIfNeeded(false);
+    // Keep the selected memory visible (scrollIntoViewIfNeeded doesn't exist in Firefox).
+    var selEl = ul.querySelector('.sel');
+    if (selEl) {
+      var top = selEl.offsetTop - ul.offsetTop, bottom = top + selEl.offsetHeight;
+      if (top < ul.scrollTop) ul.scrollTop = Math.max(0, top - selEl.offsetHeight * 2);
+      else if (bottom > ul.scrollTop + ul.clientHeight) ul.scrollTop = bottom - ul.clientHeight + selEl.offsetHeight * 2;
+    }
   }
 
   function selectMemory(i, fromPedal, noRender) {
