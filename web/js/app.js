@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.7';
+  var VERSION = '1.8';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -622,6 +622,10 @@
     if (s === 0xFA) return 'Start'; if (s === 0xFC) return 'Stop'; if (s === 0xFB) return 'Continue';
     if (s === 0xF0) {
       var e = PF.SYSEX.editMode(m); if (e >= 0) return 'Storage mode: ' + ['off', 'on', 'busy'][e];
+      if (m[1] === 0x7E && m[3] === 0x06 && m[4] === 0x01) return 'Identity request (hello)';
+      if (m[1] === 0x7E && m[3] === 0x06 && m[4] === 0x02) return 'Identity reply: ' + PF.hex(m);
+      if (m[1] === 0x41 && m[7] === 0x11) return 'Ask storage mode: ' + PF.hex(m);
+      if (m[1] === 0x41 && m[7] === 0x12 && m[8] === 0x7F && m[9] === 0x70 && m.length === 15) return 'Set storage mode ' + (m[12] ? 'ON' : 'OFF') + ': ' + PF.hex(m);
       if (m.length === 13 && m[1] === 0x41 && m[3] === 0 && m[4] === 0 && m[5] === 0x72 && m[6] === 0x12)
         return 'Pedal status ' + PF.hex([m[7], m[8], m[9]]) + ' = ' + PF.hex([m[10]]) + ' (bits ' + ('0000000' + m[10].toString(2)).slice(-8) + ')';
     }
@@ -640,6 +644,7 @@
     render();
   }
 
+  S.midi.onOut = function (b) { logMidi('out', b); };
   S.midi.onMessage(function (m) {
     if (m === null) { toast('MIDI device disconnected', 'err'); render(); return; }
     if (window.RCDirect) RCDirect.onMidi(m);
@@ -659,8 +664,10 @@
     }
     toast(on ? 'Asking the pedal for storage mode…' : 'Leaving storage mode…');
     try {
-      var done = await S.midi.setEditMode(on);
-      if (!done) throw new Error('The pedal did not answer. Stop playback on the RC-500 and try again, or use MENU › STORAGE on the pedal.');
+      var res = await S.midi.setEditMode(on);
+      if (!res.ok) throw new Error(res.last === 2 ? 'The pedal keeps answering “busy”. Make sure it is stopped and on its play screen, or use MENU › STORAGE on the pedal.'
+        : res.last === -1 ? 'The pedal did not answer. Check the USB cable, or use MENU › STORAGE on the pedal.'
+        : 'The pedal did not switch. Try again, or use MENU › STORAGE on the pedal.');
       if (on) {
         toast('Storage mode on — the “BOSS RC-500” drive appears in a few seconds');
         if (!S.store) setTimeout(function () {

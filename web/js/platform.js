@@ -276,6 +276,7 @@
     if (bytes[0] === 0xF0 && !this.sysexOk) throw new Error('The browser did not allow SysEx messages');
     if (isAndroid) nativeSync(Native.midiSend(bytesToB64(new Uint8Array(bytes))));
     else this._out.send(bytes);
+    if (this.onOut && bytes[0] === 0xF0) this.onOut(bytes);
   };
   /**
    * MIDI clock to the pedal (24 ticks per quarter note). With SYNC CLOCK = AUTO or USB the RC-500
@@ -321,18 +322,23 @@
       setTimeout(function () { var i = self.listeners.indexOf(fn); if (i >= 0) self.listeners.splice(i, 1); if (!done) res(-1); }, timeout || 600);
     });
   };
-  /** Switch storage (edit) mode on/off, retrying the way BOSS TONE STUDIO does. */
+  /** Switch storage (edit) mode on/off, retrying the way BOSS TONE STUDIO does.
+      Resolves {ok, last} where last is the pedal's last answer (0 off, 1 on, 2 busy, -1 none). */
   Midi.prototype.setEditMode = async function (on, timeoutMs) {
-    var t0 = Date.now(), want = on ? 1 : 0, answered = false;
+    var t0 = Date.now(), want = on ? 1 : 0, answered = false, last = -1, busySince = 0;
+    if (on) { try { this.send([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]); } catch (e) { } await sleep(300); } // identity request ("hello")
     while (Date.now() - t0 < (timeoutMs || 10000)) {
       var m = await this.queryEditMode();
-      if (m >= 0) answered = true;
-      if (m === want) return true;
-      if (m !== 2) this.send(SYSEX.dt1(SYSEX.ADDR_EDIT, [want]));
+      if (m >= 0) { answered = true; last = m; }
+      if (m === want) return { ok: true, last: m };
+      if (m === 2) { if (!busySince) busySince = Date.now(); }
+      else busySince = 0;
+      // Send the request when the pedal is off, and also every second while it keeps saying busy.
+      if (m !== 2 || Date.now() - busySince > 1500) { this.send(SYSEX.dt1(SYSEX.ADDR_EDIT, [want])); if (m === 2) busySince = Date.now() - 500; }
       await sleep(250);
     }
-    if (!answered && !on) return true; // the pedal often stops answering once it leaves storage mode
-    return false;
+    if (!answered && !on) return { ok: true, last: -1 }; // the pedal often stops answering once it leaves storage mode
+    return { ok: false, last: last };
   };
 
   root.RCPlatform = { Storage: Storage, Midi: Midi, SYSEX: SYSEX, saveFile: saveFile, hex: hex, isAndroid: isAndroid, sleep: sleep };
