@@ -372,7 +372,7 @@
     function mm(key) {
       var f = M(sec, key);
       if (!rng) return h('span', { class: 'note' }, '—');
-      if (rng.length > 300) return num(f.v, 0, rng.length - 1, f.set);
+      if (rng.length > 300) return h('span', { class: 'ctl' }, num(f.v, 0, rng.length - 1, f.set), h('span', { class: 'note' }, rng[f.v] !== undefined ? '= ' + rng[f.v] : ''));
       return sel(rng, f.v, f.set);
     }
     return h('div', { class: 'arow' + (on ? '' : ' off') },
