@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.9';
+  var VERSION = '1.10';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -230,6 +230,11 @@
     add(main, page());
     main.scrollTop = st;
     renderMidiLog();
+    // Keep the selected memory in view in long lists (Loops) when the selection changes.
+    if (S.page === 'loops' && S.lastScrolled !== S.cur) {
+      var row = main.querySelector('table.loops tr.sel');
+      if (row) { row.scrollIntoView({ block: 'center' }); S.lastScrolled = S.cur; }
+    } else if (S.page !== 'loops') S.lastScrolled = null;
   }
 
   function beatIdx() { return mget('RHYTHM', 'Beat'); }
