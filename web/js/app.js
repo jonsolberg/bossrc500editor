@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.10';
+  var VERSION = '1.11';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -979,7 +979,11 @@
     dialog('Download the changed files', h('div', null,
       h('p', null, S.store ? 'This browser can’t write to the drive, so download these files and copy them into ' : 'You are editing factory data. Download all four files and copy them into ',
         h('code', null, 'ROLAND/DATA'), ' on the BOSS RC-500 drive, replacing the files with the same name:'),
-      h('ul', { class: 'dl' }, files.map(function (f) { return h('li', null, h('button', { onclick: function () { PF.saveFile(f.name, f.data); } }, '⬇ ' + f.name)); })),
+      h('ul', { class: 'dl' }, files.map(function (f) { return h('li', null, h('button', { onclick: function () { PF.saveFile(f.name, f.data).catch(errToast); toast('Downloading ' + f.name); } }, '⬇ ' + f.name)); }),
+        h('li', null, h('button', { onclick: function () {
+          PF.saveFile('rc500-changed-files.zip', AU.zip(files.map(function (f) { return { name: 'ROLAND/DATA/' + f.name, data: f.data }; })), 'application/zip').catch(errToast);
+          toast('Downloading rc500-changed-files.zip');
+        }, title: 'The same files in a ZIP, inside ROLAND/DATA folders' }, '⬇ All as ZIP'))),
       h('p', { class: 'info' }, 'Check that the downloaded names are exactly as shown (no “(1)” added). ' + (S.store ? '' : 'Replacing all four files overwrites every memory and system setting on the pedal.'))),
       [{ label: 'Close' }, { label: 'Mark as saved', primary: true, onclick: function () {
         if (S.store) { if (memChanged) S.files.mem.counter += 2; if (sysChanged) S.files.sys.counter += 2; }

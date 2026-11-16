@@ -188,7 +188,10 @@
     var blob = new Blob([bytes], { type: mime || 'application/octet-stream' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
+    a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    // Firefox can drop the download if the link disappears straight away.
+    setTimeout(function () { a.remove(); }, 2000);
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
   }
 
