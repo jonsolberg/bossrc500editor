@@ -260,11 +260,16 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .pill.red { background: #ff2a2a; box-shadow: 0 0 12px #ff2a2a; }
 .pill.green { background: #46ff8a; box-shadow: 0 0 12px #46ff8a; }
 .pill.yellow { background: #ffe14a; box-shadow: 0 0 12px #ffe14a; }
-.stomp { margin-top: 26px; width: 74px; height: 74px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 45%, #f6f6f6 0 34%, #b9bbbf 35% 40%, #eeeff1 41% 58%, #8a8d92 59% 64%, #d8dade 65% 100%);
-  box-shadow: 0 6px 0 #6e7277, 0 9px 12px rgba(0,0,0,.45), inset 0 -3px 4px rgba(0,0,0,.25); transition: transform .05s, box-shadow .05s; }
-.rcpanel button.fsw.down .stomp { transform: translateY(4px); box-shadow: 0 2px 0 #6e7277, 0 3px 5px rgba(0,0,0,.4), inset 0 -3px 4px rgba(0,0,0,.25); }
-.rcpanel button.fsw:disabled .stomp { filter: grayscale(.3) brightness(.85); }
+/* Footswitch drawn like the one in Iridium Control: chrome nut ring, dark gap, brushed cap, shiny dome. */
+.stomp { position: relative; margin-top: 22px; width: 88px; height: 88px; border-radius: 50%;
+  background: radial-gradient(circle closest-side, #1c1d20 0 80%, transparent 81%),
+    conic-gradient(#f2f2f2, #8c8f94, #e0e0e0, #6b6e73, #f2f2f2);
+  box-shadow: 3px 6px 6px rgba(0,0,0,.45); }
+.stomp::before, .stomp::after { content: ""; position: absolute; left: 50%; top: 50%; border-radius: 50%; transform: translate(-50%, -50%); transition: transform .05s; }
+.stomp::before { width: 70%; height: 70%; background: conic-gradient(#bfc2c6, #f7f7f7, #7d8085, #ededed, #bfc2c6); }
+.stomp::after { width: 52%; height: 52%; background: radial-gradient(circle at 35% 35%, #fdfdfd, #a9acb1 70%); box-shadow: 0 0 0 1px rgba(0,0,0,.18); }
+.rcpanel button.fsw.down .stomp::before, .rcpanel button.fsw.down .stomp::after { transform: translate(-50%, -50%) scale(.9); }
+.rcpanel button.fsw:disabled .stomp { opacity: .85; }
 .tools button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
 .dnote { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent);
