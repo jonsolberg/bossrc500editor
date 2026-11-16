@@ -7,6 +7,21 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 **[Download the Android APK](https://github.com/jonsolberg/bossrc500editor/releases/latest/download/RC500Editor.apk)** ·
 [all releases](https://github.com/jonsolberg/bossrc500editor/releases)
 
+<p align="center">
+  <img src="docs/direct.webp" width="760" alt="Direct mode: the RC-500 panel on screen">
+</p>
+<p align="center">
+  <img src="docs/memory.webp" width="380" alt="Editing a memory">
+  <img src="docs/assign.webp" width="380" alt="ASSIGN 1–8">
+  <img src="docs/loops.webp" width="380" alt="Loops: play, export and import">
+  <img src="docs/remote.webp" width="380" alt="Remote over USB MIDI">
+  <img src="docs/system.webp" width="380" alt="System settings">
+</p>
+<p align="center">
+  <img src="docs/phone-direct.webp" width="250" alt="Direct mode on a phone">
+  <img src="docs/phone-memory.webp" width="250" alt="Editing on a phone">
+</p>
+
 > ⚠️ Not affiliated with BOSS/Roland. Make a backup (the ⬇ Backup button) before you save to the pedal.
 
 ## Features
