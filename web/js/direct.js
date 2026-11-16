@@ -34,12 +34,16 @@
   function tgtIndex(name) { return L().assignTarget.indexOf(name); }
 
   /** Which direct functions the given memory has an active ASSIGN for. */
-  function installed(mi) {
+  function installed(mi, inEditor) {
+    // By default only count what has been saved to the pedal (the data as loaded or last saved),
+    // since the pedal can't react to ASSIGNs that only exist in the editor.
+    var b = inEditor || !A.S.origMem ? A.S.mem.blocks[mi] : A.S.origMem.blocks[mi];
+    function g(sec, key) { return A.RC0.get(b, sec, key); }
     var have = {};
     for (var a = 1; a <= 8; a++) {
       var sec = 'ASSIGN' + a;
-      if (!A.mget(sec, 'Sw', mi)) continue;
-      var src = A.mget(sec, 'Source', mi), tgt = A.mget(sec, 'Target', mi);
+      if (!g(sec, 'Sw')) continue;
+      var src = g(sec, 'Source'), tgt = g(sec, 'Target');
       FUNCS.forEach(function (f) { if (src === srcIndex(f.cc) && tgt === tgtIndex(f.target)) have[f.id] = true; });
     }
     return have;
@@ -116,7 +120,7 @@
           if (a > b) { var t = a; a = b; b = t; }
           A.begin();
           for (var mi = a; mi <= b; mi++) {
-            var have = installed(mi);
+            var have = installed(mi, true);
             var need = want.filter(function (f) { return !have[f.id]; });
             if (!need.length) { done++; continue; }
             var free = [];
@@ -325,7 +329,9 @@
 
     var notes = [];
     if (!conn) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Connect the RC-500 over USB to play it from here.'), h('button', { class: 'primary', onclick: A.connectMidi }, 'Connect over USB MIDI')));
-    if (missing) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is not set up for Direct mode yet (' + missing + ' of the switches have no ASSIGN).'),
+    var pendingSave = FUNCS.filter(function (f) { return f.def && !have[f.id]; }).length && !FUNCS.filter(function (f) { return f.def && !installed(mi, true)[f.id]; }).length;
+    if (pendingSave) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is set up here, but not saved to the pedal yet. Save, put the file on the pedal and leave storage mode — then the controls work.')));
+    else if (missing) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is not set up for Direct mode yet (' + missing + ' of the switches have no ASSIGN).'),
       h('button', { onclick: setupDialog }, 'Set up memories…')));
 
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'DIRECT')),
