@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.0';
+  var VERSION = '1.1';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -208,10 +208,12 @@
     var selEl = ul.querySelector('.sel'); if (selEl && selEl.scrollIntoViewIfNeeded) selEl.scrollIntoViewIfNeeded(false);
   }
 
-  function selectMemory(i, fromPedal) {
+  function selectMemory(i, fromPedal, noRender) {
     S.cur = i;
-    if (S.sendPcOnSelect && S.midi.connected && !fromPedal) { try { S.midi.send([0xC0 | rxCh(), i]); } catch (e) { errToast(e); } }
-    if (S.page !== 'memory' && S.page !== 'remote' && S.page !== 'loops') S.page = 'memory';
+    if ((S.sendPcOnSelect || S.page === 'direct') && S.midi.connected && !fromPedal) { try { midiSend([0xC0 | rxCh(), i]); } catch (e) { errToast(e); } }
+    if (S.page !== 'memory' && S.page !== 'remote' && S.page !== 'loops' && S.page !== 'direct') S.page = 'memory';
+    if (window.RCDirect) RCDirect.onMemory();
+    if (noRender) { renderMemList(); return; }
     render();
     document.body.classList.remove('show-list');
   }
@@ -224,7 +226,7 @@
     var main = $('main');
     var st = main.scrollTop;
     main.innerHTML = '';
-    var page = { memory: pageMemory, system: pageSystem, loops: pageLoops, remote: pageRemote, about: pageAbout }[S.page];
+    var page = { memory: pageMemory, system: pageSystem, loops: pageLoops, remote: pageRemote, about: pageAbout, direct: function () { return RCDirect.page(API); } }[S.page];
     add(main, page());
     main.scrollTop = st;
   }
@@ -621,6 +623,7 @@
 
   S.midi.onMessage(function (m) {
     if (m === null) { toast('MIDI device disconnected', 'err'); render(); return; }
+    if (window.RCDirect) RCDirect.onMidi(m);
     if (m.length === 1 && m[0] >= 0xF8 && m[0] !== 0xFA && m[0] !== 0xFC) return; // clock etc.
     logMidi('in', m);
     if ((m[0] & 0xF0) === 0xC0 && S.followPedal && S.mem && m[1] < 99) { selectMemory(m[1], true); }
@@ -714,9 +717,11 @@
     return h('div', { class: 'about' },
       h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
       h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and control it live — all through the pedal’s USB port.'),
+      h('h3', null, 'Direct mode'),
+      h('p', null, 'Play the pedal from its on-screen panel. The RC-500 only listens to MIDI CC through a memory’s ASSIGNs, so first use “Set up memories…” on the Direct page and save. It uses CC#80–89 on the pedal’s RX CTL channel.'),
       h('h3', null, 'How to connect'),
       h('ol', null,
-        h('li', null, 'Connect the RC-500 with a USB cable that carries data (not a charge-only cable).'),
+        h('li', null, 'Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO — that jack is its power switch) and connect it with a USB cable that carries data.'),
         h('li', null, 'Go to ', h('b', null, 'Remote'), ' and press ', h('b', null, 'Enter storage mode'), ' — or on the pedal: MENU › STORAGE › CONNECT.'),
         h('li', null, 'Press ', h('b', null, 'Open pedal'), ' and choose the BOSS RC-500 drive (or its ROLAND folder).'),
         h('li', null, 'Edit, then ', h('b', null, 'Save'), '. ' + (fsa || PF.isAndroid ? 'The files are written straight to the pedal.' : 'Your browser downloads the changed files — copy them into ROLAND/DATA on the drive.')),
@@ -1002,6 +1007,14 @@
     render();
     PF.Storage.reopen().then(function (st) { if (st) return loadFrom(st); }).catch(function () { });
   }
+
+  // Interface for js/direct.js
+  var API = {
+    S: S, h: h, P: P, RC0: RC0, pad2: pad2, mget: mget, mset: mset, sget: sget, blk: blk, rxCh: rxCh,
+    midiSend: midiSend, connectMidi: connectMidi, render: render, begin: begin, commit: commit,
+    toast: toast, dialog: dialog, selectMemory: selectMemory,
+    go: function (p) { S.page = p; render(); }
+  };
 
   // Android back button: close dialogs / list first.
   window.rc500Back = function () {

@@ -11,6 +11,11 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 
 ## Features
 
+- **Direct mode**: play the pedal live from an on-screen copy of its panel — REC/PLAY, STOP and TRACK SELECT
+  footswitches (hold REC/PLAY to undo, hold STOP to clear), TRACK 1/2 level sliders with status lights, the colour
+  display, rhythm ON/OFF and TEMPO, LOOP FX and the MEMORY/VALUE knob. Keyboard shortcuts on a computer
+  (Space, S, T, R, F, ↑/↓). The RC-500 only reacts to MIDI CC through a memory's ASSIGNs, so *Set up memories*
+  adds the needed ASSIGNs (CC#80–89, see below) to the memories you choose; then save them to the pedal
 - **All 99 memories**: name, both tracks (level, pan, reverse, 1-shot, loop FX, start/stop, measure, loop/tempo sync,
   input/output), record (dub mode, rec action, quantize, auto rec, loop length), play (tempo with tap, play mode,
   fade time, track chain …), Loop FX (type and beat-aware lengths), rhythm (pattern per time signature, kit,
@@ -44,6 +49,24 @@ byte identical.
 | Android app | ✅ | ✅ directly | ✅ |
 
 Web MIDI and direct writing only work on secure (https) pages, so use the GitHub Pages link above.
+
+### Direct mode CC numbers
+
+| CC# | ASSIGN target | Panel control |
+|---|---|---|
+| 80 | CUR REC/PLY | REC/PLAY switch |
+| 81 | CUR PLY/STP | STOP switch |
+| 82 | TRK SELECT (0 = track 1, 127 = track 2) | TRACK SELECT switch, EDIT buttons |
+| 83 / 84 | T1 / T2 LEVEL1 (0–200) | TRACK 1 / TRACK 2 sliders |
+| 85 | RHYTHM P/S | Rhythm ON/OFF |
+| 86 | CUR CLEAR | hold STOP |
+| 87 | UNDO/REDO | hold REC/PLAY |
+| 88 | TAP TEMPO (optional) | TEMPO |
+| 89 | LOOP FX (optional) | LOOP FX |
+
+Messages go out on the pedal's RX CTL channel (SYSTEM › MIDI). Memories are selected with program change, and
+MIDI Start/Stop start and stop everything. The pedal doesn't report its track states over MIDI, so the lights on
+screen follow your presses.
 
 ### Using it
 
