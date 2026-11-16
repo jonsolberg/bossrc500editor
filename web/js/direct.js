@@ -337,7 +337,7 @@
         h('button', { onclick: function () { resetSim(); A.render(); }, title: 'Reset the lights to the memory’s saved state' }, '↺ Lights'))),
     notes, wrap, clockStrip(conn),
     h('p', { class: 'info keyhelp' }, 'Keys: Space = REC/PLAY (hold: undo), S = STOP (hold: clear), T = TRACK SELECT, R = rhythm, Enter = tap tempo, F = loop FX, ↑/↓ = memory. ' +
-      'The pedal doesn’t report its track states, so the lights follow your presses here; use ↺ Lights if they get out of step.')];
+      'The pedal reports when tracks have a phrase and when playback starts or stops; the rest (record/overdub, track select) follows your presses here. Use ↺ Lights if they get out of step.')];
   }
 
   // ------------------------------------------------------------------ tempo: MIDI clock from the editor
@@ -402,8 +402,27 @@
   }
   clock.last = 0;
 
+  /** Track states reported by the pedal: status SysEx (2 bits per track) and MIDI Start/Stop. */
+  function fromPedal(m) {
+    if (m.length === 13 && m[0] === 0xF0 && m[1] === 0x41 && m[5] === 0x72 && m[6] === 0x12 && m[7] === 0 && m[8] === 0 && m[9] === 0) {
+      var v = m[10];
+      [1, 2].forEach(function (t) {
+        var bits = (v >> ((t - 1) * 2)) & 3, tr = sim.tr[t];
+        if (bits === 0) tr.st = 'empty';
+        else if (bits === 1) { if (tr.st === 'empty' || tr.st === 'stop') tr.st = 'rec'; }
+        else if (tr.st === 'empty') tr.st = 'stop';
+      });
+      updateLights(); return true;
+    }
+    if (m[0] === 0xFA) { [1, 2].forEach(function (t) { if (sim.tr[t].st === 'stop') sim.tr[t].st = 'play'; }); updateLights(); }
+    if (m[0] === 0xFC) { [1, 2].forEach(function (t) { var tr = sim.tr[t]; if (tr.st === 'rec' || tr.st === 'play' || tr.st === 'dub') tr.st = 'stop'; }); updateLights(); }
+    return false;
+  }
+
   function onMidi(m) {
     if (!sim) return;
+    if (A && sim.mem !== A.S.cur) resetSim();
+    fromPedal(m);
     if (m[0] === 0xF8) {
       var now = performance.now(); clock.last = now;
       clock.n = (clock.n + 1) % 24; if (clock.n === 0) blink();
