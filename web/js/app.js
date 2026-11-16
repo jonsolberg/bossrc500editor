@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.11';
+  var VERSION = '1.12';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -680,7 +680,7 @@
           dialog('Open the pedal drive', h('p', null, 'When the BOSS RC-500 drive has appeared, open it (or its ROLAND folder).'),
             [{ label: 'Later' }, { label: 'Open…', primary: true, onclick: openFolder }]);
         }, 1500);
-      } else { toast('Storage mode off — the pedal reloads its data'); S.store = null; S.files = null; S.loops = null; }
+      } else { toast('Storage mode off — the pedal reloads its data'); S.loops = null; }
     } catch (e) { errToast(e); }
     render();
   }
