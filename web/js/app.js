@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.5';
+  var VERSION = '1.6';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -594,8 +594,14 @@
   }
 
   // ------------------------------------------------------------------ remote (MIDI)
-  var markNo = 0;
+  var markNo = 0, lastLog = 0;
   function logMidi(dir, m, text) {
+    var now = performance.now();
+    // Automatic divider when the messages pause, so each press on the pedal shows up as its own block.
+    if (dir !== 'mark' && lastLog && now - lastLog > 500 && S.midiLog.length && S.midiLog[0].dir !== 'mark') {
+      markNo++; S.midiLog.unshift({ dir: 'mark', text: '──── ' + markNo + ' (+' + ((now - lastLog) / 1000).toFixed(1) + ' s) ────' });
+    }
+    if (dir !== 'mark') lastLog = now;
     var d = new Date();
     var ts = pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + '.' + String(d.getMilliseconds()).padStart(3, '0').slice(0, 2);
     S.midiLog.unshift({ dir: dir, text: ts + '  ' + (text || describe(m)) });
@@ -710,7 +716,7 @@
       ]),
       card('MIDI monitor', [h('div', { class: 'btnrow' },
         h('button', { class: 'small', onclick: function () { markNo++; logMidi('mark', null, '──── mark ' + markNo + ' ────'); }, title: 'Add a divider, to see which messages belong to which press' }, '＋ Mark'),
-        h('button', { class: 'small', onclick: function () { S.midiLog = []; markNo = 0; renderMidiLog(); } }, 'Clear'),
+        h('button', { class: 'small', onclick: function () { S.midiLog = []; markNo = 0; lastLog = 0; renderMidiLog(); } }, 'Clear'),
         h('button', { class: 'small', onclick: function () {
           var txt = S.midiLog.slice().reverse().map(function (l) { return (l.dir === 'in' ? '<- ' : l.dir === 'out' ? '-> ' : '') + l.text; }).join('\n');
           try { navigator.clipboard.writeText(txt).then(function () { toast('Monitor copied — paste it in the chat'); }); } catch (e) { errToast(e); }
