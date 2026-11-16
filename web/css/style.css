@@ -211,7 +211,7 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 
 .vslider { display: block; }
 .vtrack { position: relative; width: 48px; height: 128px; cursor: ns-resize; touch-action: none; }
-.vtrack.dis { cursor: not-allowed; }
+.vtrack.dis { cursor: not-allowed; opacity: .4; filter: grayscale(1); }
 .vgroove { position: absolute; left: 50%; top: 0; bottom: 0; width: 8px; transform: translateX(-50%); border-radius: 2px; background: #0e0e10; box-shadow: inset 0 1px 3px #000; }
 .vticks { position: absolute; inset: 6px -6px; display: flex; flex-direction: column; justify-content: space-between; }
 .vticks i { display: block; height: 2px; background: linear-gradient(90deg, #fff 0 12px, transparent 12px calc(100% - 12px), #fff calc(100% - 12px)); }
