@@ -63,7 +63,7 @@ If storage mode doesn't start by itself, use MENU › STORAGE › CONNECTING on 
 
 Use the editor from its web address, [jonsolberg.github.io/rc500editor](https://jonsolberg.github.io/rc500editor/).
 Browsers only allow USB MIDI and writing to a drive on secure (https) pages. If you download the files and open
-`index.html` from your own computer, the editor can only read files.
+`index.html` from your own computer, connecting to the pedal and saving to it may not work.
 
 **Why not Safari, iPhone or iPad?** Safari has no Web MIDI, so it can't connect to the pedal, switch storage mode or
 play it in Direct mode. It also can't write to a folder or drive from a web page, so it can't save to the pedal. On
