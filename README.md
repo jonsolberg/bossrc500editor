@@ -83,18 +83,27 @@ needs the extra copy step.
 Use the web version from the link at the top: USB MIDI and writing to the drive only work on secure (https) pages, so
 a copy opened from your own disk can't do them.
 
-### Direct mode CC numbers
+### How Direct mode talks to the pedal
 
-| CC# | ASSIGN target | Panel control |
+The RC-500 doesn't let a computer press its buttons directly. What it does have is eight **Assign** slots in every
+memory: each one can listen for a MIDI control message (a "CC" – a number plus a value 0–127) and do something
+when it arrives. *Set up memories…* in the editor fills free Assign slots with the controls below. When you press
+a switch on screen, the editor sends its CC number; the memory's Assign makes the pedal do the same thing as the
+real switch. That's why a memory has to be set up – and saved to the pedal – before Direct mode can play it.
+
+You only need this table if you want to set up the Assigns by hand, or control the pedal from another MIDI device
+in the same way:
+
+| CC# | What the pedal does (Assign target) | Control on screen |
 |---|---|---|
-| 80 | CUR REC/PLY | REC/PLAY switch |
-| 81 | CUR PLY/STP | STOP switch |
-| 82 | TRK SELECT (0 = track 1, 127 = track 2) | TRACK SELECT switch, EDIT buttons |
-| 83 / 84 | T1 / T2 LEVEL1 (0–200) | TRACK 1 / TRACK 2 sliders |
-| 85 | RHYTHM P/S | Rhythm ON/OFF |
-| 86 | CUR CLEAR | hold STOP |
-| 87 | UNDO/REDO | hold REC/PLAY |
-| 89 | LOOP FX (optional) | LOOP FX |
+| 80 | Current track: record → play/overdub (CUR REC/PLY) | REC/PLAY switch |
+| 81 | Current track: play/stop (CUR PLY/STP) | STOP switch |
+| 82 | Select track 1 or 2 (TRK SELECT; 0 = track 1, 127 = track 2) | TRACK SELECT switch, EDIT buttons |
+| 83 / 84 | Track 1 / track 2 level (T1 / T2 LEVEL1, 0–200) | TRACK 1 / TRACK 2 sliders |
+| 85 | Rhythm play/stop (RHYTHM P/S) | Rhythm ON/OFF |
+| 86 | Current track: clear (CUR CLEAR) | hold STOP |
+| 87 | Undo/redo (UNDO/REDO) | hold REC/PLAY |
+| 89 | Loop FX on/off (LOOP FX, optional) | LOOP FX |
 
 **Tempo** needs no ASSIGN: the editor sends MIDI clock over USB (set the tempo, or tap TEMPO). The pedal follows it
 while it runs when SYSTEM › MIDI › Sync clock is AUTO (the default) or USB. No MIDI Start is sent, so the tracks
