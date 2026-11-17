@@ -1,5 +1,5 @@
 /*
- * BOSS RC-500 Editor — parameter definitions.
+ * RC-500 Editor — parameter definitions.
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  *
  * Value tables follow the RC-500 Parameter Guide and the value encoding found by

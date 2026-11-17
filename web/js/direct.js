@@ -1,5 +1,5 @@
 /*
- * BOSS RC-500 Editor — Direct mode: play the pedal live from an on-screen copy of its panel.
+ * RC-500 Editor — Direct mode: play the pedal live from an on-screen copy of its panel.
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  *
  * The RC-500 has no MIDI messages for its switches. It reacts to MIDI CC only through a

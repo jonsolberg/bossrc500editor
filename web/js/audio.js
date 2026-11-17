@@ -1,5 +1,5 @@
 /*
- * BOSS RC-500 Editor — WAV reading/writing and a tiny ZIP writer (for backups).
+ * RC-500 Editor — WAV reading/writing and a tiny ZIP writer (for backups).
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  */
 (function (root) {

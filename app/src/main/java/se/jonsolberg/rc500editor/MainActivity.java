@@ -1,5 +1,5 @@
 /*
- * BOSS RC-500 Editor for Android
+ * RC-500 Editor for Android
  * Copyright (C) 2026 Jon Solberg
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the

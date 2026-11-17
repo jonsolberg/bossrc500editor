@@ -1,5 +1,5 @@
 /*
- * BOSS RC-500 Editor — reading and writing the pedal's MEMORYx.RC0 / SYSTEMx.RC0 files.
+ * RC-500 Editor — reading and writing the pedal's MEMORYx.RC0 / SYSTEMx.RC0 files.
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  *
  * The files are line-based XML followed by a 4-byte little-endian save counter.

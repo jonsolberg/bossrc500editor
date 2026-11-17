@@ -1,5 +1,5 @@
 /*
- * BOSS RC-500 Editor — plain-language names for the pedal's own (abbreviated) names.
+ * RC-500 Editor — plain-language names for the pedal's own (abbreviated) names.
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  * The short names are what the pedal shows on its display and what the Parameter Guide uses.
  */

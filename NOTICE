@@ -1,4 +1,4 @@
-BOSS RC-500 Editor — Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE)
+RC-500 Editor — Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE)
 
 Parts of the parameter tables, the RC-500 data file format and the storage-mode SysEx are based on
 boss-rc500-editor by D. Fleury (https://github.com/dfleury2/boss-rc500-editor), used under the MIT licence:

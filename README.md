@@ -1,4 +1,4 @@
-# BOSS RC-500 Editor (web + Android)
+# RC-500 Editor (web + Android)
 
 An editor for the **BOSS RC-500 Loop Station** that talks to the pedal through its own USB port —
 no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app.
@@ -55,7 +55,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   **Delete all** clears the pedal
 - **MIDI page**: switch memories (program change), start/stop, play the CC numbers used by the memory's
   ASSIGNs (button + value slider), MIDI monitor, follow the pedal's memory changes
-- **Storage mode from the app**: the same SysEx that BOSS TONE STUDIO for RC sends turns the pedal's USB drive on/off,
+- **Storage mode from the app**: a SysEx message turns the pedal's USB drive on/off,
   so you don't have to go through MENU › STORAGE on the pedal
 - Backup of `ROLAND/DATA` as a ZIP; light/dark theme; works on a phone (bottom tabs, memory picker)
 

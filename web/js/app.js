@@ -1,12 +1,12 @@
 /*
- * BOSS RC-500 Editor — user interface.
+ * RC-500 Editor — user interface.
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  */
 (function () {
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.36';
+  var VERSION = '2.37';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -935,7 +935,7 @@
     await PF.saveFile('rc500-loops.zip', AU.zip(files), 'application/zip');
   }
 
-  /** Delete every phrase on the pedal (e.g. to make room for the next BOSS TONE STUDIO track set). */
+  /** Delete every phrase on the pedal (e.g. to make room for new loops). */
   function deleteAllLoops() {
     var list = [];
     for (var i = 0; i < 99; i++) for (var t = 1; t <= 2; t++) if (S.loops && S.loops[i] && S.loops[i][t]) list.push([i, t]);
@@ -948,7 +948,7 @@
           var b = busy('Deleting…');
           try {
             S.driveWritten = true;
-            // Start from the memories as they are on the pedal now (BOSS TONE STUDIO may have changed them).
+            // Start from the memories as they are on the pedal now (another program may have changed them).
             var view = LS();
             if (!anyDirty()) {
               b.set('Reading the memories…');
@@ -1188,7 +1188,7 @@
     if (S.origMem && window.RCDirect) for (var i = 0; i < 99; i++) if (RCDirect.isPrepared(i)) prepared++;
 
     return h('div', { class: 'start' },
-      h('div', { class: 'hero' }, h('h2', null, 'BOSS RC-500 Editor'),
+      h('div', { class: 'hero' }, h('h2', null, 'RC-500 Editor'),
         h('p', null, 'Edit your RC-500’s memories, manage its loops and play it from the screen — through the pedal’s own USB port.')),
       step(1, 'Connect the pedal', conn, [
         conn ? h('p', { class: 'ok' }, 'Connected to ' + S.midi.name + (S.storage ? ' — the pedal is in storage mode.' : '.'))
@@ -1240,7 +1240,7 @@
   function pageAbout() {
     var fsa = typeof window.showDirectoryPicker === 'function';
     return h('div', { class: 'about' },
-      h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
+      h('h2', null, 'RC-500 Editor ' + VERSION),
       h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and play it live – all through the pedal’s USB port.'),
       h('p', { class: 'info' }, 'Make a backup the first time you save to the pedal (System › Pedal data › Back up the pedal’s data).'),
       h('h3', null, 'Getting started'),

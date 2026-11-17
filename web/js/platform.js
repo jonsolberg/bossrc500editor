@@ -1,10 +1,10 @@
 /*
- * BOSS RC-500 Editor — access to the pedal over its USB port.
+ * RC-500 Editor — access to the pedal over its USB port.
  * Copyright (C) 2026 Jon Solberg — GPL-3.0-or-later (see LICENSE).
  *
  * Two things come in over the RC-500's single USB connector:
  *  - USB MIDI: remote control (PC/CC/start/stop) and the Roland SysEx that switches the
- *    pedal into "storage" mode, exactly as BOSS TONE STUDIO for RC does.
+ *    pedal into "storage" mode.
  *  - USB mass storage ("BOSS RC-500" drive, ROLAND/DATA + ROLAND/WAVE) while in storage mode.
  *
  * Back ends:
@@ -406,7 +406,7 @@
       setTimeout(function () { var i = self.listeners.indexOf(fn); if (i >= 0) self.listeners.splice(i, 1); if (!done) res(-1); }, timeout || 600);
     });
   };
-  /** Switch storage (edit) mode on/off, retrying the way BOSS TONE STUDIO does.
+  /** Switch storage (edit) mode on/off, and wait until the pedal confirms.
       Resolves {ok, last} where last is the pedal's last answer (0 off, 1 on, 2 busy, -1 none). */
   /**
    * Switch storage mode on/off and wait until the pedal confirms. The request is sent once; while the pedal
