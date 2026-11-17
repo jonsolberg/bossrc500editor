@@ -353,7 +353,7 @@
       label(647, 281, 'WRITE'), at(647, 296, h('span', { class: 'hline' })),
       sqbtn(609, 340, 'EXIT', false, null, 'EXIT (only on the pedal)'),
       sqbtn(685, 340, 'ENTER', false, null, 'ENTER (only on the pedal)'),
-      at(460, 420, h('span', { class: 'seam' })), at(460, 431, h('span', { class: 'seamshade' })),
+      at(460, 420, h('span', { class: 'seam' })), at(460, 409, h('span', { class: 'seamshade' })),
       // footswitches
       at(108, 572, rec), at(456, 572, stop), at(807, 572, sel));
     var wrap = h('div', { class: 'rcwrap' + (conn ? '' : ' off') }, panel,

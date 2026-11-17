@@ -267,8 +267,8 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .vline { width: 2px; height: 310px; background: #fff; }
 .hline { width: 120px; height: 2px; background: #fff; }
 .seam { width: 920px; height: 2px; background: rgba(255,255,255,.35); z-index: 1; }
-/* The upper deck is flat; the stomp section below the bevel slopes away, so it gets the shadow and less light. */
-.seamshade { width: 920px; height: 20px; background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,0)); pointer-events: none; }
+/* The upper deck is flat; the raised edge of the stomp section casts its shadow up onto the deck. */
+.seamshade { width: 920px; height: 20px; background: linear-gradient(0deg, rgba(0,0,0,.42), rgba(0,0,0,0)); pointer-events: none; }
 
 .led { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #5b1013; box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
 .led.sm { width: 13px; height: 13px; } .led.xs { width: 11px; height: 11px; }
