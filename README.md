@@ -26,6 +26,19 @@ Use it in the browser or as a standalone Android app.
   <img src="docs/phone-memory.webp" width="220" alt="Editing on a phone">
 </p>
 
+## Features
+
+- **Start page** that guides you through connecting, loading, editing and saving
+- **All 99 memories**: tracks, recording, playback, loop FX, rhythm, pedal/CTL/EXP functions and ASSIGN 1–8, with
+  plain-language explanations (ⓘ) for most settings
+- **System settings**, plus a read-only view of every stored value for troubleshooting
+- Copy, paste, swap and initialize memories; save and load presets (`.rc500.json`); undo/redo
+- **Loops**: play, export, import (any audio file, converted to the RC-500 format) and delete the recorded loops,
+  one at a time or all at once
+- **Direct mode**: play the pedal live from an on-screen copy of its panel, with keyboard shortcuts on a computer
+- **MIDI page**: switch memories, start/stop, send the memory's CC controls, MIDI monitor
+- Backup of `ROLAND/DATA` as a ZIP; light/dark theme; works on a phone
+
 ## Getting started
 
 1. Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO – that jack is its power switch) and
@@ -67,19 +80,6 @@ but the app doesn't switch storage mode for you:
 4. When you're done, eject the drive in My Files (⏏ next to USB storage) before leaving storage mode or unplugging.
 
 It can take a second try. If My Files reports errors on the drive, let a computer scan and repair it.
-
-## Features
-
-- **Start page** that guides you through connecting, loading, editing and saving
-- **All 99 memories**: tracks, recording, playback, loop FX, rhythm, pedal/CTL/EXP functions and ASSIGN 1–8, with
-  plain-language explanations (ⓘ) for most settings
-- **System settings**, plus a read-only view of every stored value for troubleshooting
-- Copy, paste, swap and initialize memories; save and load presets (`.rc500.json`); undo/redo
-- **Loops**: play, export, import (any audio file, converted to the RC-500 format) and delete the recorded loops,
-  one at a time or all at once
-- **Direct mode**: play the pedal live from an on-screen copy of its panel, with keyboard shortcuts on a computer
-- **MIDI page**: switch memories, start/stop, send the memory's CC controls, MIDI monitor
-- Backup of `ROLAND/DATA` as a ZIP; light/dark theme; works on a phone
 
 ## How it works
 
