@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.42';
+  var VERSION = '2.43';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -625,7 +625,10 @@
   // ------------------------------------------------------------------ loops: on the pedal's drive
   /** The drive the loops are read from: the one opened for the loops, else the one the memories came from. */
   function LS() { return S.loopStore || S.store; }
-  async function driveReachable(view) { try { return !!view && (await view.list('DATA')).length > 0; } catch (e) { return false; } }
+  // Android keeps showing a drive it has mounted even after the pedal has left storage mode, so there we also
+  // ask the pedal: when it says it's in play mode, the drive isn't really there.
+  function pedalSaysNoDrive() { return PF.isAndroid && S.midi.connected && S.midi.sysexOk && !S.storage; }
+  async function driveReachable(view) { if (pedalSaysNoDrive()) return false; try { return !!view && (await view.list('DATA')).length > 0; } catch (e) { return false; } }
 
   /**
    * The loops live on the pedal's USB drive, so it has to be in storage mode. Stop the pedal, switch it to
@@ -1056,16 +1059,19 @@
   /** On a computer the drive must be ejected before the pedal leaves storage mode, or the file system can be damaged. */
   function confirmEjected(intro) {
     // Only writes leave the drive needing a proper eject (Windows marks it dirty); after just reading, leaving is safe.
-    if (PF.isAndroid || !S.storage || !S.driveWritten) return Promise.resolve(true);
+    // Android doesn't notice the pedal leaving storage mode either, so it needs the same care.
+    if (!S.storage || !S.driveWritten) return Promise.resolve(true);
     return new Promise(function (res) {
       dialog('Eject the drive first', h('div', null,
         intro ? h('p', null, intro) : null,
-        h('p', null, 'Before the pedal goes back to play mode, eject the “BOSS RC-500” drive on the computer, so nothing is half-written when it disappears:'),
-        h('ul', null,
+        PF.isAndroid
+          ? h('p', null, 'Before the pedal goes back to play mode (or you pull the cable), unmount the USB storage on the phone, so nothing is half-written when it disappears: tap the USB storage notification and choose Unmount, or open Settings, search for “USB storage” and tap Unmount.')
+          : h('p', null, 'Before the pedal goes back to play mode, eject the “BOSS RC-500” drive on the computer, so nothing is half-written when it disappears:'),
+        PF.isAndroid ? null : h('ul', null,
           h('li', null, 'Windows: the USB icon by the clock (or File Explorer › right-click the drive) › Eject.'),
           h('li', null, 'Mac: drag the drive to the Trash, or Eject in Finder.')),
-        h('p', { class: 'info' }, 'Wait until the computer says it is safe to remove it.')),
-        [{ label: 'Later', onclick: function () { res(false); } }, { label: 'Drive is ejected', primary: true, onclick: function () { res(true); } }]);
+        h('p', { class: 'info' }, PF.isAndroid ? 'Wait until the phone says the storage is unmounted.' : 'Wait until the computer says it is safe to remove it.')),
+        [{ label: 'Later', onclick: function () { res(false); } }, { label: PF.isAndroid ? 'Storage is unmounted' : 'Drive is ejected', primary: true, onclick: function () { res(true); } }]);
     });
   }
 
@@ -1169,7 +1175,7 @@
       if (autoLoad && !S.store) {
         S.autoLoaded = true;
         if (!PF.isAndroid) loadFromPedal();
-        else PF.Storage.openRemembered(false).then(function (v) { return v && v.list('DATA').then(function (l) { if (l.length) return loadFrom(v).then(function () { render(); }); }); }).catch(function () { });
+        else if (!pedalSaysNoDrive()) PF.Storage.openRemembered(false).then(function (v) { return v && v.list('DATA').then(function (l) { if (l.length) return loadFrom(v).then(function () { render(); }); }); }).catch(function () { });
       }
     });
     refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote' || S.page === 'loops') render();
@@ -1464,7 +1470,7 @@
   async function getDrive(b) {
     var needPerm = false, v;
     async function reachable(view) { var l = await view.list('DATA'); return l.length > 0; }
-    try { v = await PF.Storage.openRemembered(false); if (v && await reachable(v)) return v; }
+    try { v = await PF.Storage.openRemembered(false); if (v && !pedalSaysNoDrive() && await reachable(v)) return v; }
     catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
 
     var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect && !PF.isAndroid, why = '';
@@ -1612,17 +1618,9 @@
                 S.files.memName = 'MEMORY' + f.mem.load + '.RC0'; S.files.sysName = 'SYSTEM' + f.sys.load + '.RC0';
                 S.origMem = RC0.clone(S.mem); S.origSys = RC0.clone(S.sys);
                 if (S.midi.connected && S.midi.sysexOk && S.storage) {
-                  if (PF.isAndroid) {
-                    b.set('Switching storage mode off…');
-                    await PF.sleep(3000); // let Android finish writing to the drive
-                    await leaveStorage({ ejected: true, quiet: true });
-                    b.close();
-                    toast('Saved and checked. The pedal has reloaded its memories.');
-                  } else {
-                    b.close();
-                    var left = await leaveStorage({ quiet: true, intro: 'Saved and checked.' });
-                    toast(left ? 'Saved. The pedal has reloaded its memories.' : 'Saved. Eject the drive and leave storage mode when you are ready (Start page or the pedal’s EXIT).');
-                  }
+                  b.close();
+                  var left = await leaveStorage({ quiet: true, intro: 'Saved and checked.' });
+                  toast(left ? 'Saved. The pedal has reloaded its memories.' : 'Saved. Eject the drive and leave storage mode when you are ready (Start page or the pedal’s EXIT).');
                 } else {
                   b.close();
                   dialog('Saved', h('div', null, h('p', null, 'Written and checked.'),
