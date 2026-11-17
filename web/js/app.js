@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.44';
+  var VERSION = '2.45';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1187,7 +1187,7 @@
   // ------------------------------------------------------------------ Start page: guided setup with live status
   function pageStart() {
     var conn = S.midi.connected, mid = !!navigator.requestMIDIAccess || PF.isAndroid;
-    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct && !PF.isAndroid;
+    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct;
     function step(n, title, done, body) {
       return h('section', { class: 'card step' + (done ? ' done' : '') },
         h('div', { class: 'stephead' }, h('span', { class: 'stepno' }, done ? '✓' : String(n)), h('h3', null, title)), body);
@@ -1462,6 +1462,7 @@
 
   // Android only sees the drive if the pedal is already in storage mode when the cable goes in, so the pedal can't be
   // switched from the app there: the user unplugs, starts storage mode on the pedal and plugs back in.
+  var ANDROID_REPLUG = 'If the drive isn’t listed: unplug the USB cable from the phone, choose MENU › STORAGE › CONNECTING on the pedal (the display shows “PREPARING…”) and plug the cable back in – Android sometimes only picks up the drive that way.';
   var MANUAL_STORAGE = PF.isAndroid
     ? 'Unplug the USB cable from the phone. On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it (the display shows “PREPARING…”). Plug the cable back in – the display changes to “CONNECTING…”.'
     : 'On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it. The display shows “CONNECTING…” and a drive called BOSS RC-500 appears on the computer.';
@@ -1476,7 +1477,7 @@
     try { v = await PF.Storage.openRemembered(false); if (v && !pedalSaysNoDrive() && await reachable(v)) return v; }
     catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
 
-    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect && !PF.isAndroid, why = '';
+    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect, why = '';
     if (!auto && S.midi.connected && !S.midi.sysexOk) why = 'the browser didn’t allow SysEx messages, which the editor needs to switch the mode.';
     if (auto) {
       b.set('Switching the pedal to storage mode…');
@@ -1511,7 +1512,7 @@
     }
     b.hide();
     try {
-      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' : MANUAL_STORAGE,
+      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' + (PF.isAndroid ? ' ' + ANDROID_REPLUG : '') : MANUAL_STORAGE,
         why ? h('br') : null, why ? h('small', null, 'Couldn’t switch it automatically: ' + why) : null), needPerm);
     } finally { b.show(); }
   }

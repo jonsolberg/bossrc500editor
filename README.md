@@ -141,9 +141,10 @@ Android app have had less testing; please report problems as issues.
 
 ### Android: if the drive doesn't appear
 
-Android only mounts the pedal's drive when the pedal is already in storage mode as the USB cable is connected, so on
-Android the app can't switch storage mode on for you. Instead: unplug the cable, choose MENU › STORAGE › CONNECTING on
-the pedal (it shows PREPARING…), then plug the cable back in. Leaving storage mode works from the app.
+Usually the app switches storage mode on and Android mounts the drive by itself. If Android doesn't pick it up (for
+example after the drive was not unmounted last time): unplug the cable, choose MENU › STORAGE › CONNECTING on the pedal
+(it shows PREPARING…), then plug the cable back in. After saving or changing loops, unmount the USB storage on the
+phone before the pedal leaves storage mode.
 
 ## Building
 
