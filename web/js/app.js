@@ -230,13 +230,9 @@
     var t = localStorage.getItem('rc500-theme') || 'auto';
     var next = { auto: 'light', light: 'dark', dark: 'auto' }[t];
     var cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
-    // Undo/redo, MIDI and Help have their own buttons/tabs on a wide screen; on a phone they live here.
+    // MIDI and Help have their own tabs on a wide screen; on a phone they live here.
     var narrow = window.matchMedia('(max-width: 819px)').matches;
     var items = [];
-    if (narrow) items.push(
-      { label: '↶ Undo', disabled: !S.undo.length, onclick: function () { undoRedo(S.undo, S.redo, true); } },
-      { label: '↷ Redo', disabled: !S.redo.length, onclick: function () { undoRedo(S.redo, S.undo, false); } },
-      null);
     items.push(
       { label: '⬇ Back up the pedal’s data', disabled: !S.store, onclick: function () { backup().catch(errToast); } },
       { label: '📁 Open a backup or folder…', onclick: openFolder },
