@@ -139,12 +139,22 @@ writing memory changes, saving Direct mode ASSIGNs, playing the pedal from Direc
 playing, exporting, importing and deleting loops – an imported loop plays on the pedal). Other browsers and the
 Android app have had less testing; please report problems as issues.
 
-### Android: if the drive doesn't appear
+### Android: storage mode is manual (and a bit unreliable)
 
-Usually the app switches storage mode on and Android mounts the drive by itself. If Android doesn't pick it up (for
-example after the drive was not unmounted last time): unplug the cable, choose MENU › STORAGE › CONNECTING on the pedal
-(it shows PREPARING…), then plug the cable back in. After saving or changing loops, unmount the USB storage on the
-phone before the pedal leaves storage mode.
+> **Note:** Android's handling of the pedal's USB drive is buggy. Android only mounts the drive when the pedal is
+> already in storage mode as the cable goes in, it doesn't notice the drive going away, and after a cable pull without
+> ejecting it can refuse the drive or ask to restart. Direct mode and editing work fine; the loops need the steps below,
+> and sometimes a second try.
+
+So the Android app doesn't switch storage mode for you:
+
+1. Unplug the USB cable from the phone.
+2. On the pedal: MENU › STORAGE › CONNECTING (it shows PREPARING…).
+3. Plug the cable back in – the pedal shows CONNECTING… and the app opens the drive.
+4. When you're done: open My Files, tap ⏏ next to USB storage, and only then leave storage mode or pull the cable.
+
+If My Files reports errors on the drive, connect the pedal to a computer in storage mode and let it scan and repair the
+drive.
 
 ## Building
 

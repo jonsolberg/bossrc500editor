@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.47';
+  var VERSION = '2.48';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -274,7 +274,7 @@
       S.storage = false; S.autoStorage = false; S.loopDriveGone = true; S.loopTried = false; S.driveWritten = false;
       logMidi('mark', null, '──── the pedal left storage mode by itself ────');
       toast(PF.isAndroid
-        ? 'The pedal has left storage mode. If its drive doesn’t come back when you open Loops, unplug the cable from the phone and plug it in again.'
+        ? 'The pedal has left storage mode. Eject its drive in My Files; for the loops again, unplug, start storage mode on the pedal and plug back in.'
         : 'The pedal has left storage mode.');
       render();
     });
@@ -699,8 +699,9 @@
   function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' kB'; }
 
   function pageLoops() {
-    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect;
+    var auto = canAutoStorage() || (PF.isAndroid && S.storage);
     if (!LS() || !LS().hasWave || S.loopDriveGone) {
+      if (PF.isAndroid && !S.storage) return androidStorageHelp();
       if (auto && !S.loopTried) { S.loopTried = true; S.loopDriveGone = false; setTimeout(openLoopDrive, 0); }
       return h('div', { class: 'empty' }, h('h2', null, 'Loops'),
         h('p', null, 'The recorded loops are on the pedal’s USB drive. To read them, the pedal stops and switches to storage mode – it can’t play while you work here.'),
@@ -1084,18 +1085,18 @@
   function confirmEjected(intro) {
     // Only writes leave the drive needing a proper eject (Windows marks it dirty); after just reading, leaving is safe.
     // Android doesn't notice the pedal leaving storage mode either, so it needs the same care.
-    if (!S.storage || !S.driveWritten) return Promise.resolve(true);
+    if (!S.storage || (!S.driveWritten && !PF.isAndroid)) return Promise.resolve(true);
     return new Promise(function (res) {
       dialog('Eject the drive first', h('div', null,
         intro ? h('p', null, intro) : null,
         PF.isAndroid
-          ? h('p', null, 'Before the pedal goes back to play mode (or you pull the cable), unmount the USB storage on the phone, so nothing is half-written when it disappears: tap the USB storage notification and choose Unmount, or open Settings, search for “USB storage” and tap Unmount.')
+          ? h('p', null, 'Before the pedal goes back to play mode (or you pull the cable), eject its drive on the phone: open My Files (Mina filer) and tap ⏏ next to USB storage. Otherwise Android keeps a drive that isn’t there, and can complain or ask to restart.')
           : h('p', null, 'Before the pedal goes back to play mode, eject the “BOSS RC-500” drive on the computer, so nothing is half-written when it disappears:'),
         PF.isAndroid ? null : h('ul', null,
           h('li', null, 'Windows: the USB icon by the clock (or File Explorer › right-click the drive) › Eject.'),
           h('li', null, 'Mac: drag the drive to the Trash, or Eject in Finder.')),
-        h('p', { class: 'info' }, PF.isAndroid ? 'Wait until the phone says the storage is unmounted.' : 'Wait until the computer says it is safe to remove it.')),
-        [{ label: 'Later', onclick: function () { res(false); } }, { label: PF.isAndroid ? 'Storage is unmounted' : 'Drive is ejected', primary: true, onclick: function () { res(true); } }]);
+        h('p', { class: 'info' }, PF.isAndroid ? 'To get to the loops again later, unplug the cable, start storage mode on the pedal and plug it back in.' : 'Wait until the computer says it is safe to remove it.')),
+        [{ label: 'Later', onclick: function () { res(false); } }, { label: PF.isAndroid ? 'Drive is ejected' : 'Drive is ejected', primary: true, onclick: function () { res(true); } }]);
     });
   }
 
@@ -1195,7 +1196,9 @@
     // (On the Loops tab, opening the drive for the loops reads them too.)
     var autoLoad = S.midi.sysexOk && !S.store && !anyDirty() && PF.Storage.canWriteDirect && S.page !== 'loops' && !S.autoLoaded;
     if (S.midi.sysexOk) S.midi.queryEditMode(800).then(function (v) {
-      if (v >= 0) { S.storage = v === 1; if (S.storage) S.driveWritten = true; /* unknown history: play safe */ refreshChrome(); if (S.page === 'start') render(); }
+      if (v >= 0) { S.storage = v === 1; if (S.storage) { S.driveWritten = true; S.loopTried = false; } /* unknown history: play safe */ refreshChrome(); if (S.page === 'start' || S.page === 'loops') render(); }
+      // On Android the app doesn't switch storage mode itself: read only when the pedal came in storage mode.
+      if (PF.isAndroid && v !== 1) autoLoad = false;
       if (autoLoad && !S.store) {
         S.autoLoaded = true;
         loadFromPedal();
@@ -1207,7 +1210,7 @@
   // ------------------------------------------------------------------ Start page: guided setup with live status
   function pageStart() {
     var conn = S.midi.connected, mid = !!navigator.requestMIDIAccess || PF.isAndroid;
-    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct;
+    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct && !PF.isAndroid;
     function step(n, title, done, body) {
       return h('section', { class: 'card step' + (done ? ' done' : '') },
         h('div', { class: 'stephead' }, h('span', { class: 'stepno' }, done ? '✓' : String(n)), h('h3', null, title)), body);
@@ -1237,7 +1240,7 @@
           : h('p', null, 'The editor shows factory settings until you load your pedal’s memories.'),
         h('p', { class: 'info' }, autoStorage
           ? 'The pedal is read through its USB drive (“storage mode”). The editor switches it on and off for you; the pedal must be stopped.'
-          : conn && direct ? 'The pedal is read through its USB drive (“storage mode”).'
+          : conn && direct && !PF.isAndroid ? 'The pedal is read through its USB drive (“storage mode”).'
             : 'The pedal is read through its USB drive (“storage mode”). ' + MANUAL_STORAGE),
         h('div', { class: 'btnrow' },
           h('button', { class: S.store ? '' : 'primary', onclick: function () { loadFromPedal(); } }, S.store ? '⤓ Load again' : '⤓ Load from pedal'),
@@ -1300,7 +1303,10 @@
         h('li', null, h('b', null, 'Show stored values'), ' – the raw numbers stored for the memory and the system, read only, for troubleshooting.')),
       h('p', null, 'The button at the top right switches between automatic, light and dark theme. On a phone, MIDI and Help are at the bottom of the System page.'),
       PF.isAndroid ? h('h3', null, 'Android') : null,
-      PF.isAndroid ? h('p', null, 'If the pedal’s drive doesn’t show up in the folder picker: unplug the USB cable, choose MENU › STORAGE › CONNECTING on the pedal (the display shows PREPARING…), then plug the cable back in. Android only sees the drive when the pedal is already in storage mode as it connects.') : null,
+      PF.isAndroid ? h('p', { class: 'warn' }, 'Note: mounting the pedal’s drive is buggy on Android. It only works reliably with the steps below, and sometimes needs a second try (or a phone restart). Direct mode and editing aren’t affected.') : null,
+      PF.isAndroid ? h('p', null, 'Android only sees the pedal’s drive when the pedal is already in storage mode as the cable goes in, and it doesn’t notice the drive going away. So on Android the app doesn’t switch storage mode for you:') : null,
+      PF.isAndroid ? h('ol', null, ANDROID_STEPS.map(function (t) { return h('li', null, t); }), h('li', null, ANDROID_EJECT)) : null,
+      PF.isAndroid ? h('p', { class: 'info' }, 'If My Files says the drive has errors (after the cable was pulled without ejecting), connect the pedal to a computer in storage mode and let it scan and repair the drive.') : null,
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
@@ -1480,8 +1486,22 @@
     });
   }
 
-  // Android only sees the drive if the pedal is already in storage mode when the cable goes in, so the pedal can't be
-  // switched from the app there: the user unplugs, starts storage mode on the pedal and plugs back in.
+  // Android only sees the drive if the pedal is already in storage mode when the cable goes in, and it doesn't notice
+  // the drive going away. Switching the mode from the app gets Android stuck on a drive that isn't there, so on Android
+  // the user starts storage mode on the pedal before plugging in, and ejects in My Files before leaving it.
+  function canAutoStorage() { return S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect && !PF.isAndroid; }
+  var ANDROID_STEPS = ['Unplug the USB cable from the phone.',
+    'On the pedal: MENU › STORAGE › CONNECTING (the display shows “PREPARING…”).',
+    'Plug the cable back in – the display changes to “CONNECTING…” and the app opens the drive.'];
+  var ANDROID_EJECT = 'When you’re done with the loops: open My Files (Mina filer), tap ⏏ next to USB storage, and only then leave storage mode or pull the cable.';
+  function androidStorageHelp() {
+    return h('div', { class: 'empty' }, h('h2', null, 'Loops'),
+      h('p', { class: 'warn' }, 'Note: mounting the pedal’s drive is buggy on Android. It only works reliably with the steps below, and sometimes needs a second try (or a phone restart). Direct mode and editing aren’t affected.'),
+      h('p', null, 'The loops are on the pedal’s USB drive. On Android the pedal has to be in storage mode before the cable goes into the phone:'),
+      h('ol', null, ANDROID_STEPS.map(function (t) { return h('li', null, t); })),
+      h('p', { class: 'info' }, ANDROID_EJECT),
+      h('p', null, h('button', { onclick: openLoopFolder }, 'Open the pedal drive or a folder…')));
+  }
   var ANDROID_REPLUG = 'If the drive isn’t listed: unplug the USB cable from the phone, choose MENU › STORAGE › CONNECTING on the pedal (the display shows “PREPARING…”) and plug the cable back in – Android sometimes only picks up the drive that way.';
   var MANUAL_STORAGE = PF.isAndroid
     ? 'Unplug the USB cable from the phone. On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it (the display shows “PREPARING…”). Plug the cable back in – the display changes to “CONNECTING…”.'
@@ -1497,7 +1517,7 @@
     try { v = await PF.Storage.openRemembered(false); if (v && !pedalSaysNoDrive() && await reachable(v)) return v; }
     catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
 
-    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect, why = '';
+    var auto = canAutoStorage(), why = '';
     if (!auto && S.midi.connected && !S.midi.sysexOk) why = 'the browser didn’t allow SysEx messages, which the editor needs to switch the mode.';
     if (auto) {
       b.set('Switching the pedal to storage mode…');
@@ -1532,7 +1552,7 @@
     }
     b.hide();
     try {
-      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' + (PF.isAndroid ? ' ' + ANDROID_REPLUG : '') : MANUAL_STORAGE,
+      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' : PF.isAndroid && S.storage ? 'The pedal is in storage mode. ' + ANDROID_REPLUG : MANUAL_STORAGE,
         why ? h('br') : null, why ? h('small', null, 'Couldn’t switch it automatically: ' + why) : null), needPerm);
     } finally { b.show(); }
   }
