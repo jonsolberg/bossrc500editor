@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.21';
+  var VERSION = '2.22';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -888,7 +888,8 @@
     return withStorageLock(async function () {
       toast('Asking the pedal for storage mode…');
       try {
-        var res = await S.midi.setEditMode(true);
+        var res = await S.midi.setEditMode(true, 20000);
+        if (!res.ok && res.last === 2) { S.storage = true; S.autoStorage = true; toast('The pedal is switching to storage mode — the “BOSS RC-500” drive should appear shortly'); render(); return; }
         if (!res.ok) throw new Error(res.last === 2 ? 'The pedal keeps answering “busy”. Make sure it is stopped and on its play screen, or use MENU › STORAGE on the pedal.'
           : res.last === -1 ? 'The pedal did not answer. Check the USB cable, or use MENU › STORAGE on the pedal.'
           : 'The pedal did not switch. Try again, or use MENU › STORAGE on the pedal.');
@@ -1269,7 +1270,9 @@
       try {
         var on = (await S.midi.queryEditMode()) === 1;
         if (!on) {
-          var r = await S.midi.setEditMode(true); on = r.ok; if (on) S.autoStorage = true;
+          var r = await S.midi.setEditMode(true, 20000);
+          // The pedal can keep answering "busy" until the computer has mounted its drive, so busy counts as on its way.
+          on = r.ok || r.last === 2; if (on) S.autoStorage = true;
           else why = r.last === -1 ? 'The pedal didn’t answer the request to switch to storage mode.'
             : r.last === 2 ? 'The pedal was still busy switching when the editor gave up waiting.'
             : 'The pedal answered but stayed in play mode – it may not switch while it plays or shows a menu.';
