@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.27';
+  var VERSION = '2.28';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1071,7 +1071,7 @@
     return h('div', { class: 'about' },
       h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
       h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and play it live – all through the pedal’s USB port.'),
-      h('p', { class: 'warnnote' }, 'Experimental: being tested on a real pedal. Make a backup before you save (⋯ › Back up the pedal’s data).'),
+      h('p', { class: 'info' }, 'Make a backup the first time you save to the pedal (⋯ › Back up the pedal’s data).'),
       h('h3', null, 'Getting started'),
       h('ol', null,
         h('li', null, 'Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO — that jack is its power switch) and connect it with a USB cable that carries data (on a phone: USB-C/OTG).'),

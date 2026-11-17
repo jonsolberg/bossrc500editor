@@ -3,8 +3,7 @@
 An editor for the **BOSS RC-500 Loop Station** that talks to the pedal through its own USB port —
 no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app.
 
-> ⚠️ **Experimental – being tested on a real pedal.** Make a backup (⋯ › Back up the pedal’s data) before you
-> save to the pedal. Not affiliated with BOSS/Roland.
+> Make a backup (⋯ › Back up the pedal’s data) the first time you save to the pedal. Not affiliated with BOSS/Roland.
 
 **[Open the web version](https://jonsolberg.github.io/bossrc500editor/)** ·
 **[Download the Android APK](https://github.com/jonsolberg/bossrc500editor/releases/latest/download/RC500Editor.apk)** ·
@@ -129,10 +128,11 @@ but they can't follow the pedal's own sliders: the RC-500 doesn't send those ove
 
 ### Tested so far
 
-On a real RC-500: USB MIDI in both directions (program change, start/stop, the pedal's status messages), reading
-the memories and loops, playing and exporting a loop, backup, writing memory changes (name and tempo checked on the
-pedal) and saving Direct mode ASSIGNs. Still being tested: playing the pedal from Direct mode and storage mode
-started from the editor in every browser.
+On a real RC-500, in Chrome on Windows: USB MIDI in both directions (program change, start/stop, the pedal's status
+messages), switching storage mode on and off from the editor, reading the memories automatically on connect, backup,
+writing memory changes, saving Direct mode ASSIGNs, playing the pedal from Direct mode, and the Loops tab (reading,
+playing, exporting, importing and deleting loops – an imported loop plays on the pedal). Other browsers and the
+Android app have had less testing; please report problems as issues.
 
 ## Building
 
