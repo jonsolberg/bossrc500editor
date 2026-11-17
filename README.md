@@ -81,6 +81,13 @@ It can take a second try. If My Files reports errors on the drive, let a compute
 - **MIDI page**: switch memories, start/stop, send the memory's CC controls, MIDI monitor
 - Backup of `ROLAND/DATA` as a ZIP; light/dark theme; works on a phone
 
+## How it works
+
+The pedal's USB port carries both USB MIDI and, in storage mode, a drive with the memories in `ROLAND/DATA` and the
+loops in `ROLAND/WAVE/<memory>_<track>/`. Storage mode is switched with a SysEx message. The pedal keeps two copies of
+each data file and loads the one with the higher save counter. The editor saves to the other copy, so the previous
+version stays on the pedal as a fallback, and unchanged files are written back byte for byte.
+
 ## Direct mode
 
 The RC-500 can't be played over USB directly, but every memory has eight **ASSIGN** slots that react to MIDI CC
@@ -102,13 +109,6 @@ MIDI device the same way.
 Messages go out on the pedal's RX CTL channel. Tempo is sent as MIDI clock and needs no ASSIGN (SYSTEM › MIDI ›
 Sync clock AUTO or USB). The on-screen sliders set the track levels but can't follow the pedal's own sliders, which
 the RC-500 doesn't report over USB.
-
-## How it works
-
-The pedal's USB port carries both USB MIDI and, in storage mode, a drive with the memories in `ROLAND/DATA` and the
-loops in `ROLAND/WAVE/<memory>_<track>/`. Storage mode is switched with a SysEx message. The pedal keeps two copies of
-each data file and loads the one with the higher save counter. The editor saves to the other copy, so the previous
-version stays on the pedal as a fallback, and unchanged files are written back byte for byte.
 
 ## Tested
 
