@@ -37,7 +37,7 @@ button.danger { color: var(--danger); }
 button.danger:hover:not(:disabled) { border-color: var(--danger); }
 button.small { padding: 2px 8px; font-size: 13px; }
 button.iconbtn { padding: 6px 9px; }
-#btnMore { font-size: 17px; line-height: 1; min-width: 34px; }
+#btnMore { font-size: 17px; line-height: 1; min-width: 34px; display: inline-flex; align-items: center; justify-content: center; }
 button.save.attention { background: var(--dirty); color: #231800; border-color: var(--dirty); font-weight: 600; }
 select, input[type=number], input[type=search], input.name {
   background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; max-width: 100%;

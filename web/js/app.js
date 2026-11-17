@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.37';
+  var VERSION = '2.38';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1669,7 +1669,12 @@
     document.documentElement.dataset.theme = t;
     var b = $('btnMore'); if (!b) return;
     var narrow = window.matchMedia('(max-width: 819px)').matches;
-    b.textContent = narrow ? '⋯' : THEMES[t][0];
+    var svg = {
+      auto: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
+      light: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+      dark: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" fill="currentColor"/></svg>'
+    };
+    if (narrow) b.textContent = '⋯'; else b.innerHTML = svg[t];
     b.title = narrow ? 'More' : THEMES[t][1] + ' – click to change';
   }
   window.matchMedia('(max-width: 819px)').addEventListener('change', function () { try { applyTheme(); } catch (e) { } });
