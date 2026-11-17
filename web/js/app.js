@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.10';
+  var VERSION = '2.11';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -228,22 +228,29 @@
 
   function moreMenu() {
     var t = localStorage.getItem('rc500-theme') || 'auto';
-    popMenu($('btnMore'), [
+    var next = { auto: 'light', light: 'dark', dark: 'auto' }[t];
+    var cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
+    // Undo/redo, MIDI and Help have their own buttons/tabs on a wide screen; on a phone they live here.
+    var narrow = window.matchMedia('(max-width: 819px)').matches;
+    var items = [];
+    if (narrow) items.push(
       { label: '↶ Undo', disabled: !S.undo.length, onclick: function () { undoRedo(S.undo, S.redo, true); } },
       { label: '↷ Redo', disabled: !S.redo.length, onclick: function () { undoRedo(S.redo, S.undo, false); } },
-      null,
-      { label: '⇄ Remote control', onclick: function () { go('remote'); } },
-      { label: '? Help', onclick: function () { go('about'); } },
-      null,
-      { label: '📁 Open a folder or backup…', onclick: openFolder },
-      { label: '⬇ Backup of the pedal’s data', disabled: !S.store, onclick: function () { backup().catch(errToast); } },
+      null);
+    items.push(
+      { label: '⬇ Back up the pedal’s data', disabled: !S.store, onclick: function () { backup().catch(errToast); } },
+      { label: '📁 Open a backup or folder…', onclick: openFolder },
       { label: '🏭 Start from factory settings', onclick: openFactory },
-      { label: '🔍 Show stored values', onclick: storedValuesDialog },
       null,
-      { label: 'Theme: ' + t + ' → ' + ({ auto: 'light', light: 'dark', dark: 'auto' })[t], onclick: function () {
-        try { localStorage.setItem('rc500-theme', ({ auto: 'light', light: 'dark', dark: 'auto' })[t]); } catch (e) { } applyTheme();
-      } }
-    ]);
+      { label: '🔍 Show stored values', onclick: storedValuesDialog });
+    if (narrow) items.push(
+      { label: '⇄ MIDI', onclick: function () { go('remote'); } },
+      { label: '? Help', onclick: function () { go('about'); } });
+    items.push(null,
+      { label: '◐ Theme: ' + cap(t) + ' (switch to ' + next + ')', onclick: function () {
+        try { localStorage.setItem('rc500-theme', next); } catch (e) { } applyTheme();
+      } });
+    popMenu($('btnMore'), items);
   }
   function go(p) { S.page = p; try { localStorage.setItem('rc500-page', p); } catch (e) { } render(); window.scrollTo(0, 0); }
 
@@ -804,7 +811,7 @@
       var target = L.assignTarget[mget('ASSIGN' + a, 'Target')];
       ccRows.push(ccPad(cc, RCNames.plain(target) + (mget('ASSIGN' + a, 'Sw') ? '' : ' (assign off)'), mget('ASSIGN' + a, 'SourceMode')));
     }
-    return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'REMOTE')),
+    return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'MIDI')),
       h('div', { class: 'tools' }, connected
         ? h('button', { onclick: function () { S.midi.disconnect(); render(); } }, 'Disconnect')
         : h('button', { class: 'primary', onclick: connectMidi }, 'Connect over USB MIDI'))),
@@ -936,7 +943,7 @@
     return h('div', { class: 'about' },
       h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
       h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and control it live — all through the pedal’s USB port.'),
-      h('p', { class: 'warnnote' }, 'Experimental: being tested on a real pedal. Make a backup before you save (⋯ › Backup of the pedal’s data).'),
+      h('p', { class: 'warnnote' }, 'Experimental: being tested on a real pedal. Make a backup before you save (⋯ › Back up the pedal’s data).'),
       h('h3', null, 'Getting started'),
       h('ol', null,
         h('li', null, 'Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO — that jack is its power switch) and connect it with a USB cable that carries data (on a phone: USB-C/OTG).'),
@@ -952,7 +959,7 @@
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
-        h('li', null, 'USB MIDI (Direct, Remote, automatic storage mode): ', navigator.requestMIDIAccess || PF.isAndroid ? '✅' : '❌'),
+        h('li', null, 'USB MIDI (Direct, MIDI page, automatic storage mode): ', navigator.requestMIDIAccess || PF.isAndroid ? '✅' : '❌'),
         h('li', null, 'Secure page (needed for both): ', window.isSecureContext ? '✅' : '❌ open the https version')),
       h('h3', null, 'Good to know'),
       h('ul', null,

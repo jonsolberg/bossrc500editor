@@ -15,7 +15,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   <img src="docs/memory.webp" width="380" alt="Editing a memory, including ASSIGN 1–8">
   <img src="docs/system.webp" width="380" alt="System settings">
   <img src="docs/loops.webp" width="380" alt="Loops: play, export and import">
-  <img src="docs/remote.webp" width="380" alt="Remote over USB MIDI">
+  <img src="docs/remote.webp" width="380" alt="MIDI page">
 </p>
 <p align="center">
   <img src="docs/phone-start.webp" width="220" alt="Start page on a phone">
@@ -23,7 +23,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   <img src="docs/phone-memory.webp" width="220" alt="Editing on a phone">
 </p>
 
-> ⚠️ **Experimental – being tested on a real pedal.** Make a backup (⋯ › Backup of the pedal’s data) before you
+> ⚠️ **Experimental – being tested on a real pedal.** Make a backup (⋯ › Back up the pedal’s data) before you
 > save to the pedal. Not affiliated with BOSS/Roland.
 
 ## Features
@@ -49,7 +49,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 - Presets: save a memory as a `.rc500.json` file and load it into any memory
 - **Loops**: see which memories have recorded phrases, play them, export them as WAV, import any audio file
   (WAV/MP3/M4A … converted to the RC-500 format, 44.1 kHz 32-bit float stereo) or delete them
-- **Remote over USB MIDI**: switch memories (program change), start/stop, play the CC numbers used by the memory's
+- **MIDI page**: switch memories (program change), start/stop, play the CC numbers used by the memory's
   ASSIGNs (button + value slider), MIDI monitor, follow the pedal's memory changes
 - **Storage mode from the app**: the same SysEx that BOSS TONE STUDIO for RC sends turns the pedal's USB drive on/off,
   so you don't have to go through MENU › STORAGE on the pedal
