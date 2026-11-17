@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.1';
+  var VERSION = '2.2';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -898,7 +898,7 @@
       ]),
       h('p', { class: 'info center' }, 'Not affiliated with BOSS/Roland. ', link('about', 'Help and details'), ' · ',
         h('a', { href: 'https://github.com/jonsolberg/bossrc500editor', target: '_blank', rel: 'noopener' }, 'Source'), ' · ',
-        h('a', { href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '🍺 Buy me a beer')));
+        h('a', { href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '❤️ Support me')));
   }
   function link(page, text) { return h('a', { href: '#', onclick: function (e) { e.preventDefault(); go(page); } }, text); }
 
@@ -931,7 +931,7 @@
         h('a', { href: 'https://github.com/jonsolberg/bossrc500editor', target: '_blank', rel: 'noopener' }, 'Source code on GitHub'), '.'),
       h('p', null, 'File format and parameter encoding were worked out by D. Fleury’s ',
         h('a', { href: 'https://github.com/dfleury2/boss-rc500-editor', target: '_blank', rel: 'noopener' }, 'boss-rc500-editor'), ' (MIT licence). Not affiliated with BOSS or Roland.'),
-      h('p', null, h('a', { class: 'kofi', href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '🍺 Buy me a beer on Ko-fi')));
+      h('p', null, h('a', { class: 'kofi', href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '❤️ Support me on Ko-fi')));
   }
 
   // ------------------------------------------------------------------ memory tools
