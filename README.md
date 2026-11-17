@@ -64,13 +64,24 @@ the higher save counter (the last 4 bytes). The editor reads the newest copy and
 higher counter, so the previous version stays on the pedal as a fallback. Unchanged files are written back byte for
 byte identical.
 
-| | Read pedal | Write pedal | USB MIDI |
-|---|---|---|---|
-| Chrome / Edge / Opera (desktop, https) | ✅ | ✅ directly | ✅ |
-| Firefox (https) | ✅ (pick the folder each time) | downloads the changed files to copy into `ROLAND/DATA` | ✅ (asks for permission) |
-| Android app | ✅ | ✅ directly | ✅ |
+### Which browser to use
 
-Web MIDI and direct writing only work on secure (https) pages, so use the GitHub Pages link above.
+The editor needs two things from the browser: access to the pedal's **USB drive** (to load and save memories and
+loops) and **USB MIDI** (to connect, switch storage mode on and off by itself, and for Direct mode and the MIDI page).
+Browsers differ in how much of that they allow:
+
+| | Load from the pedal | Save to the pedal | USB MIDI (connect, Direct, MIDI page) |
+|---|---|---|---|
+| **Chrome, Edge or Opera** on a computer | ✅ remembers the drive | ✅ writes the files straight to the pedal | ✅ |
+| **Firefox** on a computer | ✅ but you pick the drive each time | ⚠️ downloads the changed files – you copy them into `ROLAND/DATA` on the drive yourself | ✅ asks for permission the first time |
+| **Android app** | ✅ remembers the drive | ✅ writes the files straight to the pedal | ✅ |
+| Safari, iPhone/iPad | ❌ | ❌ | ❌ no Web MIDI |
+
+In short: on a computer, Chrome or Edge does everything; on a phone, use the Android app. Firefox works, but saving
+needs the extra copy step.
+
+Use the web version from the link at the top: USB MIDI and writing to the drive only work on secure (https) pages, so
+a copy opened from your own disk can't do them.
 
 ### Direct mode CC numbers
 
