@@ -319,7 +319,7 @@
       // jacks along the top edge
       // jacks along the top edge, left to right as seen from above
       [144, 400, 490, 588, 690].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
-      [238, 312].map(function (x) { return at(x, -9, h('span', { class: 'jack mini black' })); }),
+      [238, 312].map(function (x) { return at(x, -3, h('span', { class: 'jack mini black' })); }),
       at(832, -3, h('span', { class: 'xlr' })),
       [[144, 'CTL 1,2/EXP'], [238, 'IN'], [312, 'OUT'], [400, 'B'], [490, 'A/MONO'], [588, 'B'], [690, 'A/MONO'], [832, 'MIC IN']]
         .map(function (j) { return at(j[0], -36, h('span', { class: 'jlabel' }, j[1])); }),
