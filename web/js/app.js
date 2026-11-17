@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.24';
+  var VERSION = '2.25';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -844,9 +844,6 @@
       toast('Connected to ' + S.midi.name);
       afterConnect();
       if (!S.midi.sysexOk) toast('SysEx was not allowed: storage mode switching is unavailable', 'err');
-      // First connection with nothing read yet: read the memories from the pedal right away.
-      // (The Loops tab opens the drive itself and reads them from there.)
-      else if (!S.store && !anyDirty() && PF.Storage.canWriteDirect && S.page !== 'loops') setTimeout(loadFromPedal, 300);
     } catch (e) { errToast(e); }
     finally { connecting = false; }
     render();
@@ -978,8 +975,14 @@
 
   function afterConnect() {
     // Is the pedal in storage mode right now?
-    if (S.midi.sysexOk) S.midi.queryEditMode(800).then(function (v) { if (v >= 0) { S.storage = v === 1; refreshChrome(); if (S.page === 'start') render(); } });
-    refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote') render();
+    // First connection with nothing read yet: read the memories from the pedal right away.
+    // (On the Loops tab, opening the drive for the loops reads them too.)
+    var autoLoad = S.midi.sysexOk && !S.store && !anyDirty() && PF.Storage.canWriteDirect && S.page !== 'loops' && !S.autoLoaded;
+    if (S.midi.sysexOk) S.midi.queryEditMode(800).then(function (v) {
+      if (v >= 0) { S.storage = v === 1; refreshChrome(); if (S.page === 'start') render(); }
+      if (autoLoad && !S.store) { S.autoLoaded = true; loadFromPedal(); }
+    });
+    refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote' || S.page === 'loops') render();
   }
 
   // ------------------------------------------------------------------ Start page: guided setup with live status
