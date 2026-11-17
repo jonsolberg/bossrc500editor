@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.25';
+  var VERSION = '2.26';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -762,8 +762,8 @@
     var buf = await AU.decodeAny(new Uint8Array(await file.arrayBuffer()));
     if (buf.duration < 0.35) throw new Error('The RC-500 needs at least 0.35 seconds of audio');
     var wav = AU.encodeRc500Wav(buf);
-    var base = file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_\- ]+/g, '_').slice(0, 40) || 'IMPORT';
-    var name = base + '.WAV';
+    // Name it the way the pedal names its own recordings: WAVE/001_1/001_1.WAV
+    var name = loopDir(i, t).split('/').pop() + '.WAV';
     if (!LS().writable) {
       await PF.saveFile(name, wav, 'audio/wav');
       dialog('Copy the file to the pedal', h('div', null,
@@ -777,17 +777,35 @@
       for (var k = 0; k < existing.length; k++) await LS().remove(loopDir(i, t) + '/' + existing[k].name);
       await LS().write(loopDir(i, t) + '/' + name, wav);
       S.loops[i] = S.loops[i] || {}; S.loops[i][t] = { name: name, size: wav.length, secs: buf.duration };
-      toast('Imported into memory ' + (i + 1) + ', track ' + t); render();
+      setPhraseInfo(i, t, buf.length);
+      render();
+      savePhraseInfo('Imported into memory ' + (i + 1) + ', track ' + t + '.');
     };
     if (old) dialog('Replace phrase?', h('p', null, 'Memory ' + (i + 1) + ' track ' + t + ' already has ' + old.name + '. Replace it?'),
       [{ label: 'Cancel' }, { label: 'Replace', danger: true, onclick: go }]);
     else await go();
   }
+  /** The memory itself records whether a track has a phrase and how long it is (in samples); the pedal
+      reports "data damaged" when that doesn't match the WAV file, so keep it in step. */
+  function setPhraseInfo(i, t, frames) {
+    begin();
+    mset('TRACK' + t, 'WavStat', frames ? 1 : 0, i);
+    mset('TRACK' + t, 'WavLen', frames, i);
+    commit();
+  }
+  function savePhraseInfo(what) {
+    dialog('Save the memory too', h('div', null,
+      h('p', null, what + ' The memory on the pedal must be updated as well (it stores whether the track has a phrase and how long it is) – otherwise the pedal reports “data damaged”.'),
+      h('p', { class: 'info' }, 'Save now, or later with Save to pedal.')),
+      [{ label: 'Later' }, { label: 'Save now', primary: true, onclick: function () { setTimeout(function () { save().catch(errToast); }, 0); } }]);
+  }
   function deleteLoop(i, t, f) {
     dialog('Delete phrase?', h('p', null, 'Delete ' + f.name + ' from memory ' + (i + 1) + ', track ' + t + '? This cannot be undone.'),
       [{ label: 'Cancel' }, {
         label: 'Delete', danger: true, onclick: async function () {
-          await LS().remove(loopDir(i, t) + '/' + f.name); delete S.loops[i][t]; render();
+          await LS().remove(loopDir(i, t) + '/' + f.name); delete S.loops[i][t];
+          setPhraseInfo(i, t, 0); render();
+          savePhraseInfo('Deleted.');
         }
       }]);
   }
