@@ -1,7 +1,7 @@
 # RC-500 Editor (web + Android)
 
-An editor for the **BOSS RC-500 Loop Station** that talks to the pedal through its own USB port —
-no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app.
+An editor for the **BOSS RC-500 Loop Station** that talks to the pedal through its own USB port.
+Use it in the browser or as a standalone Android app.
 
 > **Recommended: Chrome or Edge** (or another Chromium-based browser such as Opera) on a computer, or the Android app on a
 > phone – they work directly with the pedal. Make a backup (System › Pedal data) the first time you save to the
