@@ -319,9 +319,9 @@
       [144, 400, 490, 588, 690].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
       [238, 312].map(function (x) { return at(x, -9, h('span', { class: 'jack mini' })); }),
       at(832, -3, h('span', { class: 'xlr' })),
-      [[144, 'CTL 1,2/EXP'], [238, 'MIDI IN'], [312, 'MIDI OUT'], [400, 'B'], [490, 'A/MONO'], [588, 'B'], [690, 'A/MONO'], [832, 'MIC IN']]
+      [[144, 'CTL 1,2/EXP'], [238, 'IN'], [312, 'OUT'], [400, 'B'], [490, 'A/MONO'], [588, 'B'], [690, 'A/MONO'], [832, 'MIC IN']]
         .map(function (j) { return at(j[0], -36, h('span', { class: 'jlabel' }, j[1])); }),
-      at(445, -56, h('span', { class: 'jlabel grp' }, 'OUTPUT')), at(639, -56, h('span', { class: 'jlabel grp' }, 'INST IN')),
+      at(275, -56, h('span', { class: 'jlabel grp' }, 'MIDI')), at(445, -56, h('span', { class: 'jlabel grp' }, 'OUTPUT')), at(639, -56, h('span', { class: 'jlabel grp' }, 'INST IN')),
       at(887, 40, h('div', { class: 'logo' }, h('span', { class: 'ls' }, 'LOOP STATION'), h('span', { class: 'mdl' }, 'RC-500'))),
       // track sliders
       at(116, 164, vslider(1, ok('lvl1'))), at(211, 164, vslider(2, ok('lvl2'))),
