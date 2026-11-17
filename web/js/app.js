@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.22';
+  var VERSION = '2.23';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1265,7 +1265,10 @@
     if (!auto && S.midi.connected && !S.midi.sysexOk) why = 'the browser didn’t allow SysEx messages, which the editor needs to switch the mode.';
     if (auto) {
       b.set('Switching the pedal to storage mode…');
+      // If the pedal is still leaving storage mode (e.g. you just came from Direct), wait for that to finish.
+      for (var w = 0; storageLock && w < 60; w++) { b.set('Waiting for the pedal to finish switching…'); await PF.sleep(500); }
       if (storageLock) throw new Error('The pedal is already switching storage mode – try again in a moment.');
+      b.set('Switching the pedal to storage mode…');
       storageLock = true;
       try {
         var on = (await S.midi.queryEditMode()) === 1;
@@ -1317,10 +1320,13 @@
     opts = typeof opts === 'object' && opts ? opts : { quiet: !!opts };
     if (!S.midi.connected) { if (!opts.quiet) toast('Eject the drive, then leave storage mode on the pedal (press EXIT).'); S.storage = false; render(); return; }
     if (!opts.ejected && !(await confirmEjected(opts.intro))) { render(); return false; }
+    var fromLoops = S.page === 'loops';
     return withStorageLock(async function () {
       if (!PF.isAndroid) await PF.sleep(500);
       var r = await S.midi.setEditMode(false);
-      S.storage = false; S.autoStorage = false; S.loopDriveGone = true; S.loopTried = true;
+      S.storage = false; S.autoStorage = false; S.loopDriveGone = true;
+      // Left from the Loops tab: don't switch straight back. Moved to Loops meanwhile: let it open the drive again.
+      S.loopTried = fromLoops || S.page !== 'loops';
       if (!opts.quiet) toast(r.ok ? 'The pedal is back in play mode and has reloaded its memories' : 'Leave storage mode on the pedal (press EXIT)', r.ok ? '' : 'err');
       render();
       return true;
