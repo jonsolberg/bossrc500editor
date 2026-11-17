@@ -13,8 +13,8 @@ android {
         applicationId = "se.jonsolberg.rc500editor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 62
-        versionName = "2.45"
+        versionCode = 63
+        versionName = "2.46"
     }
 
     // The app shows the same editor as the web version: ../web is bundled as the app's assets.
