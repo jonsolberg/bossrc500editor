@@ -139,6 +139,12 @@ writing memory changes, saving Direct mode ASSIGNs, playing the pedal from Direc
 playing, exporting, importing and deleting loops – an imported loop plays on the pedal). Other browsers and the
 Android app have had less testing; please report problems as issues.
 
+### Android: if the drive doesn't appear
+
+Android only mounts the pedal's drive when the pedal is already in storage mode as the USB cable is connected. If the
+folder picker doesn't list it: unplug the cable, choose MENU › STORAGE › CONNECTING on the pedal (it shows
+PREPARING…), then plug the cable back in.
+
 ## Building
 
 - **Web**: plain HTML/CSS/JS in [`web/`](web), no build step. Open `web/index.html` or serve the folder.

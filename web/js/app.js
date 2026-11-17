@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.40';
+  var VERSION = '2.41';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1266,6 +1266,8 @@
         h('li', null, h('b', null, 'Start from factory settings'), ' – begin from the pedal’s defaults instead of your memories.'),
         h('li', null, h('b', null, 'Show stored values'), ' – the raw numbers stored for the memory and the system, read only, for troubleshooting.')),
       h('p', null, 'The button at the top right switches between automatic, light and dark theme. On a phone, MIDI and Help are at the bottom of the System page.'),
+      PF.isAndroid ? h('h3', null, 'Android') : null,
+      PF.isAndroid ? h('p', null, 'If the pedal’s drive doesn’t show up in the folder picker: unplug the USB cable, choose MENU › STORAGE › CONNECTING on the pedal (the display shows PREPARING…), then plug the cable back in. Android only sees the drive when the pedal is already in storage mode as it connects.') : null,
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
@@ -1435,7 +1437,8 @@
         ? (PF.isAndroid ? 'In the picker, open the BOSS RC-500 USB drive and tap “Use this folder”.' : 'In the window that opens, choose the drive called BOSS RC-500.')
         : 'Choose the drive called BOSS RC-500. Firefox asks whether to “upload” the files — they stay on your computer, the editor only reads them.';
       dialog(needPerm ? 'Allow access to the pedal' : 'Select the pedal’s drive', h('div', null, intro,
-        h('p', { class: 'info' }, needPerm ? 'Your browser asks once per visit before the editor may use the drive again.' : how)),
+        h('p', { class: 'info' }, needPerm ? 'Your browser asks once per visit before the editor may use the drive again.' : how),
+        PF.isAndroid && !needPerm ? h('p', { class: 'info' }, 'Drive not listed? Android only sees it when the pedal is already in storage mode as the cable goes in: unplug the cable, choose MENU › STORAGE › CONNECTING on the pedal (it shows PREPARING…), then plug the cable back in.') : null),
         [{ label: 'Cancel', onclick: function () { rej(new Error('Cancelled')); } },
         { label: needPerm ? 'Allow' : 'Select the drive', primary: true, onclick: function () {
           var p = needPerm ? PF.Storage.openRemembered(true) : PF.Storage.canWriteDirect ? PF.Storage.pick() : pickViaInput();
