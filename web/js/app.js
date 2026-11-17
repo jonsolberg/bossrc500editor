@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.9';
+  var VERSION = '2.10';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -804,7 +804,6 @@
       var target = L.assignTarget[mget('ASSIGN' + a, 'Target')];
       ccRows.push(ccPad(cc, RCNames.plain(target) + (mget('ASSIGN' + a, 'Sw') ? '' : ' (assign off)'), mget('ASSIGN' + a, 'SourceMode')));
     }
-    var genCc = { n: S.genCc || 1, v: 127 };
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'REMOTE')),
       h('div', { class: 'tools' }, connected
         ? h('button', { onclick: function () { S.midi.disconnect(); render(); } }, 'Disconnect')
@@ -832,11 +831,7 @@
           h('button', { class: 'transport', disabled: !connected, onclick: function () { midiSend([0xFC]); } }, '■ Stop')),
         h('p', { class: 'info' }, 'Start plays the tracks (which ones is set under Memory › MIDI start plays and System › MIDI start starts). Stop stops everything.')
       ]),
-      card('MIDI controls in memory ' + (S.cur + 1), [h('p', { class: 'info' }, 'The pedal reacts to a MIDI CC only if one of the memory’s Assign slots listens for it. These are the ones this memory has – press a button or move its slider to try it.')].concat(ccRows.length ? ccRows : [h('p', { class: 'info' }, 'This memory has none yet. Set an Assign’s “When” to a MIDI CC (or use Set up memories… for Direct mode).')])),
-      card('Send any MIDI CC', [h('p', { class: 'info' }, 'For testing: send a CC number of your choice.'),
-        row('CC#', num(genCc.n, 0, 127, function (v) { S.genCc = v; render(); })),
-        ccPad(genCc.n, 'CC#' + genCc.n, 0)
-      ]),
+      card('MIDI controls in memory ' + (S.cur + 1), [h('p', { class: 'info' }, 'The pedal only reacts to a MIDI CC (controller number + value 0–127) if one of the memory’s Assign slots listens for it. These are the ones this memory has. The button sends 127 while pressed and 0 when you let go (or switches on/off for “on/off per press”); the slider sends its value while you drag.')].concat(ccRows.length ? ccRows : [h('p', { class: 'info' }, 'This memory has none yet. Set an Assign’s “When” to a MIDI CC (or use Set up memories… for Direct mode).')])),
       card('MIDI messages', [h('p', { class: 'info' }, 'Everything sent to (→) and received from (←) the pedal. Useful when something doesn’t work: press Copy and send me the text.'), h('div', { class: 'btnrow' },
         h('button', { class: 'small', onclick: function () { markNo++; logMidi('mark', null, '──── mark ' + markNo + ' ────'); }, title: 'Add a divider, to see which messages belong to which press' }, '＋ Mark'),
         h('button', { class: 'small', onclick: function () { S.midiLog = []; markNo = 0; lastLog = 0; renderMidiLog(); } }, 'Clear'),
@@ -848,17 +843,26 @@
     )];
   }
 
+  /** One MIDI control the memory listens to: what it does, a button and a value slider. */
   function ccPad(cc, label, mode) {
     var ch = rxCh(), connected = S.midi.connected;
     var state = S.ccToggle = S.ccToggle || {};
-    var btn = h('button', { class: 'pad' + (state[cc] ? ' on' : ''), disabled: !connected }, label);
-    if (mode === 1) btn.addEventListener('click', function () { state[cc] = !state[cc]; midiSend([0xB0 | ch, cc, state[cc] ? 127 : 0]); btn.classList.toggle('on', state[cc]); });
+    var btn = h('button', { class: 'small pad' + (state[cc] ? ' on' : ''), disabled: !connected },
+      mode === 1 ? (state[cc] ? 'On (127) – click for off' : 'Off (0) – click for on') : 'Press: 127, release: 0');
+    if (mode === 1) btn.addEventListener('click', function () {
+      state[cc] = !state[cc]; midiSend([0xB0 | ch, cc, state[cc] ? 127 : 0]);
+      btn.classList.toggle('on', state[cc]); btn.textContent = state[cc] ? 'On (127) – click for off' : 'Off (0) – click for on';
+    });
     else {
       btn.addEventListener('pointerdown', function () { midiSend([0xB0 | ch, cc, 127]); btn.classList.add('on'); });
       ['pointerup', 'pointerleave'].forEach(function (ev) { btn.addEventListener(ev, function () { if (btn.classList.contains('on')) { midiSend([0xB0 | ch, cc, 0]); btn.classList.remove('on'); } }); });
     }
-    var rng = h('input', { type: 'range', min: 0, max: 127, value: 0, disabled: !connected, oninput: function () { midiSend([0xB0 | ch, cc, +rng.value]); } });
-    return h('div', { class: 'ccpad' }, h('span', { class: 'ccn' }, 'CC#' + cc), btn, rng);
+    var val = h('span', { class: 'ccval' }, '–');
+    var rng = h('input', { type: 'range', min: 0, max: 127, value: 0, disabled: !connected, title: 'Sends the value while you drag',
+      oninput: function () { val.textContent = rng.value; midiSend([0xB0 | ch, cc, +rng.value]); } });
+    return h('div', { class: 'ccpad' },
+      h('div', { class: 'cchead' }, h('span', { class: 'ccn' }, 'CC#' + cc), h('b', null, label)),
+      h('div', { class: 'ccctl' }, btn, h('label', { class: 'ccslider' }, h('span', { class: 'note' }, 'Value'), rng, val)));
   }
 
   function afterConnect() {

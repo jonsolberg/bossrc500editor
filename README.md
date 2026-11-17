@@ -50,7 +50,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 - **Loops**: see which memories have recorded phrases, play them, export them as WAV, import any audio file
   (WAV/MP3/M4A … converted to the RC-500 format, 44.1 kHz 32-bit float stereo) or delete them
 - **Remote over USB MIDI**: switch memories (program change), start/stop, play the CC numbers used by the memory's
-  ASSIGNs (momentary/toggle + sliders), send any CC, MIDI monitor, follow the pedal's memory changes
+  ASSIGNs (button + value slider), MIDI monitor, follow the pedal's memory changes
 - **Storage mode from the app**: the same SysEx that BOSS TONE STUDIO for RC sends turns the pedal's USB drive on/off,
   so you don't have to go through MENU › STORAGE on the pedal
 - Backup of `ROLAND/DATA` as a ZIP; light/dark theme; works on a phone (bottom tabs, memory picker)

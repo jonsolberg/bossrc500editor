@@ -152,9 +152,14 @@ table.loops td.nm { font-family: ui-monospace, Consolas, monospace; white-space:
 
 .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 button.transport { font-size: 16px; padding: 10px 20px; }
-.ccpad { display: grid; grid-template-columns: 50px 1fr 84px; gap: 8px; align-items: center; margin: 6px 0; }
+.ccpad { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line, rgba(128,128,128,.25)); border-radius: 8px; }
+.cchead { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; font-size: 13.5px; }
+.ccctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ccslider { display: flex; gap: 6px; align-items: center; flex: 1; min-width: 150px; }
+.ccslider input { flex: 1; }
+.ccval { width: 28px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 .ccn { color: var(--muted); font-variant-numeric: tabular-nums; }
-button.pad { padding: 8px 10px; text-align: left; white-space: normal; font-size: 13px; line-height: 1.25; min-height: 40px; touch-action: none; user-select: none; }
+button.pad { touch-action: none; user-select: none; white-space: nowrap; }
 button.pad.on { background: var(--accent); color: var(--accent-ink); }
 .midilog { font: 12.5px ui-monospace, Consolas, monospace; max-height: 420px; overflow-y: auto; margin-top: 8px; }
 .midilog .in { color: var(--accent); }
