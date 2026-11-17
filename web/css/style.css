@@ -154,6 +154,8 @@ table.loops td.nm { font-family: ui-monospace, Consolas, monospace; white-space:
 
 .datagrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 8px; }
 .datagrid button { width: 100%; }
+.phoneonly { display: none !important; }
+@media (max-width: 819px) { .phoneonly { display: grid !important; margin: 4px 0 16px; } }
 .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 button.transport { font-size: 16px; padding: 10px 20px; }
 .ccpad { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line, rgba(128,128,128,.25)); border-radius: 8px; }

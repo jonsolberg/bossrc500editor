@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.39';
+  var VERSION = '2.40';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -259,17 +259,8 @@
     try { localStorage.setItem('rc500-theme', { auto: 'light', light: 'dark', dark: 'auto' }[t]); } catch (e) { }
     applyTheme();
   }
-  /** On a wide screen the header button just switches theme; on a phone MIDI and Help live here too. */
-  function moreMenu() {
-    var narrow = window.matchMedia('(max-width: 819px)').matches;
-    if (!narrow) { nextTheme(); return; }
-    var t = localStorage.getItem('rc500-theme') || 'auto';
-    popMenu($('btnMore'), [
-      { label: '⇄ MIDI', onclick: function () { go('remote'); } },
-      { label: '? Help', onclick: function () { go('about'); } },
-      null,
-      { label: THEMES[t][0] + ' ' + THEMES[t][1] + ' (tap to change)', onclick: nextTheme }]);
-  }
+  /** The header button switches theme (automatic → light → dark). */
+  function moreMenu() { nextTheme(); }
   // The open tab is kept only for this visit (a reload stays put); a new visit always starts on Start.
   function go(p) {
     S.page = p; try { sessionStorage.setItem('rc500-page', p); } catch (e) { }
@@ -622,7 +613,11 @@
         (function () { var f = Sy('INPUT', 'MicNs'); return row('Mic noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the mic while recording.'); })(),
         (function () { var f = Sy('INPUT', 'InstNs'); return row('Instrument noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the instrument inputs while recording.'); })(),
         sSel('INPUT light shows', 'INPUT', 'Indicator', L.peak, 'Which signal the INPUT level light follows.')
-      ]))];
+      ])),
+    // On a phone the bottom tabs have no room for MIDI and Help, so they are here.
+    h('div', { class: 'phoneonly datagrid' },
+      h('button', { onclick: function () { go('remote'); } }, 'MIDI'),
+      h('button', { onclick: function () { go('about'); } }, 'Help'))];
   }
 
   // ------------------------------------------------------------------ loops (WAV)
@@ -1270,7 +1265,7 @@
         h('li', null, h('b', null, 'Open a backup or folder'), ' – load a backup ZIP, or a ROLAND folder copied from the pedal.'),
         h('li', null, h('b', null, 'Start from factory settings'), ' – begin from the pedal’s defaults instead of your memories.'),
         h('li', null, h('b', null, 'Show stored values'), ' – the raw numbers stored for the memory and the system, read only, for troubleshooting.')),
-      h('p', null, 'The ◐ button at the top right switches between automatic, light and dark theme (on a phone it is in the ⋯ menu).'),
+      h('p', null, 'The button at the top right switches between automatic, light and dark theme. On a phone, MIDI and Help are at the bottom of the System page.'),
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
@@ -1668,16 +1663,14 @@
     var t = localStorage.getItem('rc500-theme') || 'auto';
     document.documentElement.dataset.theme = t;
     var b = $('btnMore'); if (!b) return;
-    var narrow = window.matchMedia('(max-width: 819px)').matches;
     var svg = {
       auto: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
       light: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
       dark: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" fill="currentColor"/></svg>'
     };
-    if (narrow) b.textContent = '⋯'; else b.innerHTML = svg[t];
-    b.title = narrow ? 'More' : THEMES[t][1] + ' – click to change';
+    b.innerHTML = svg[t];
+    b.title = THEMES[t][1] + ' – click to change';
   }
-  window.matchMedia('(max-width: 819px)').addEventListener('change', function () { try { applyTheme(); } catch (e) { } });
 
   // ------------------------------------------------------------------ boot
   function boot() {
