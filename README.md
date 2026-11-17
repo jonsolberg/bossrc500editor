@@ -7,9 +7,9 @@ Use it in the browser or as a standalone Android app.
 > phone – they work directly with the pedal. Make a backup (System › Pedal data) the first time you save to the
 > pedal. Not affiliated with BOSS/Roland.
 
-**[Open the web version](https://jonsolberg.github.io/bossrc500editor/)** ·
-**[Download the Android APK](https://github.com/jonsolberg/bossrc500editor/releases/latest/download/RC500Editor.apk)** ·
-[all releases](https://github.com/jonsolberg/bossrc500editor/releases)
+**[Open the web version](https://jonsolberg.github.io/rc500editor/)** ·
+**[Download the Android APK](https://github.com/jonsolberg/rc500editor/releases/latest/download/RC500Editor.apk)** ·
+[all releases](https://github.com/jonsolberg/rc500editor/releases)
 
 <p align="center">
   <img src="docs/direct.webp" width="760" alt="Direct mode: the RC-500 panel on screen">

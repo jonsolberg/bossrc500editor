@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.38';
+  var VERSION = '2.39';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1232,7 +1232,7 @@
           h('button', { onclick: function () { go('direct'); } }, 'Open Direct'))
       ]),
       h('p', { class: 'info center' }, 'Not affiliated with BOSS/Roland. ', link('about', 'Help and details'), ' · ',
-        h('a', { href: 'https://github.com/jonsolberg/bossrc500editor', target: '_blank', rel: 'noopener' }, 'Source'), ' · ',
+        h('a', { href: 'https://github.com/jonsolberg/rc500editor', target: '_blank', rel: 'noopener' }, 'Source'), ' · ',
         h('a', { href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '❤️ Support me')));
   }
   function link(page, text) { return h('a', { href: '#', onclick: function (e) { e.preventDefault(); go(page); } }, text); }
@@ -1284,7 +1284,7 @@
         h('li', null, 'Imported audio is converted to 44.1 kHz 32-bit float stereo WAV, which the RC-500 reads directly.')),
       h('h3', null, 'Credits & licence'),
       h('p', null, 'By Jon Solberg. Free software under the GNU GPL v3 or later. ',
-        h('a', { href: 'https://github.com/jonsolberg/bossrc500editor', target: '_blank', rel: 'noopener' }, 'Source code on GitHub'), '.'),
+        h('a', { href: 'https://github.com/jonsolberg/rc500editor', target: '_blank', rel: 'noopener' }, 'Source code on GitHub'), '.'),
       h('p', null, 'File format and parameter encoding were worked out by D. Fleury’s ',
         h('a', { href: 'https://github.com/dfleury2/boss-rc500-editor', target: '_blank', rel: 'noopener' }, 'boss-rc500-editor'), ' (MIT licence). Not affiliated with BOSS or Roland.'),
       h('p', null, h('a', { class: 'kofi', href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '❤️ Support me on Ko-fi')));
@@ -1705,7 +1705,7 @@
     S.origMem = RC0.clone(S.mem); S.origSys = RC0.clone(S.sys);
     try { S.page = sessionStorage.getItem('rc500-page') || 'start'; localStorage.removeItem('rc500-page'); } catch (e) { S.page = 'start'; }
     if (!window.isSecureContext && !PF.isAndroid) {
-      var https = 'https://jonsolberg.github.io/bossrc500editor/';
+      var https = 'https://jonsolberg.github.io/rc500editor/';
       $('banner').appendChild(h('div', { class: 'warn' }, 'This page is not served over https, so the browser blocks USB MIDI and saving to the pedal. ',
         h('a', { href: https }, 'Open the https version'), ' for all features.'));
     }
