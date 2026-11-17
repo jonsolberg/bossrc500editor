@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.41';
+  var VERSION = '2.42';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1166,7 +1166,11 @@
     var autoLoad = S.midi.sysexOk && !S.store && !anyDirty() && PF.Storage.canWriteDirect && S.page !== 'loops' && !S.autoLoaded;
     if (S.midi.sysexOk) S.midi.queryEditMode(800).then(function (v) {
       if (v >= 0) { S.storage = v === 1; if (S.storage) S.driveWritten = true; /* unknown history: play safe */ refreshChrome(); if (S.page === 'start') render(); }
-      if (autoLoad && !S.store) { S.autoLoaded = true; loadFromPedal(); }
+      if (autoLoad && !S.store) {
+        S.autoLoaded = true;
+        if (!PF.isAndroid) loadFromPedal();
+        else PF.Storage.openRemembered(false).then(function (v) { return v && v.list('DATA').then(function (l) { if (l.length) return loadFrom(v).then(function () { render(); }); }); }).catch(function () { });
+      }
     });
     refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote' || S.page === 'loops') render();
   }
@@ -1174,7 +1178,7 @@
   // ------------------------------------------------------------------ Start page: guided setup with live status
   function pageStart() {
     var conn = S.midi.connected, mid = !!navigator.requestMIDIAccess || PF.isAndroid;
-    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct;
+    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct && !PF.isAndroid;
     function step(n, title, done, body) {
       return h('section', { class: 'card step' + (done ? ' done' : '') },
         h('div', { class: 'stephead' }, h('span', { class: 'stepno' }, done ? '✓' : String(n)), h('h3', null, title)), body);
@@ -1438,7 +1442,7 @@
         : 'Choose the drive called BOSS RC-500. Firefox asks whether to “upload” the files — they stay on your computer, the editor only reads them.';
       dialog(needPerm ? 'Allow access to the pedal' : 'Select the pedal’s drive', h('div', null, intro,
         h('p', { class: 'info' }, needPerm ? 'Your browser asks once per visit before the editor may use the drive again.' : how),
-        PF.isAndroid && !needPerm ? h('p', { class: 'info' }, 'Drive not listed? Android only sees it when the pedal is already in storage mode as the cable goes in: unplug the cable, choose MENU › STORAGE › CONNECTING on the pedal (it shows PREPARING…), then plug the cable back in.') : null),
+        null),
         [{ label: 'Cancel', onclick: function () { rej(new Error('Cancelled')); } },
         { label: needPerm ? 'Allow' : 'Select the drive', primary: true, onclick: function () {
           var p = needPerm ? PF.Storage.openRemembered(true) : PF.Storage.canWriteDirect ? PF.Storage.pick() : pickViaInput();
@@ -1447,7 +1451,11 @@
     });
   }
 
-  var MANUAL_STORAGE = 'On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it. The display shows “CONNECTING…” and a drive called BOSS RC-500 appears on the computer.';
+  // Android only sees the drive if the pedal is already in storage mode when the cable goes in, so the pedal can't be
+  // switched from the app there: the user unplugs, starts storage mode on the pedal and plugs back in.
+  var MANUAL_STORAGE = PF.isAndroid
+    ? 'Unplug the USB cable from the phone. On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it (the display shows “PREPARING…”). Plug the cable back in – the display changes to “CONNECTING…”.'
+    : 'On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it. The display shows “CONNECTING…” and a drive called BOSS RC-500 appears on the computer.';
 
   /**
    * Get the pedal's drive: the remembered one if it is there, otherwise switch the pedal to storage mode
@@ -1459,7 +1467,7 @@
     try { v = await PF.Storage.openRemembered(false); if (v && await reachable(v)) return v; }
     catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
 
-    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect, why = '';
+    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect && !PF.isAndroid, why = '';
     if (!auto && S.midi.connected && !S.midi.sysexOk) why = 'the browser didn’t allow SysEx messages, which the editor needs to switch the mode.';
     if (auto) {
       b.set('Switching the pedal to storage mode…');
