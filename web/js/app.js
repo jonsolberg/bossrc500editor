@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.16';
+  var VERSION = '2.17';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -275,7 +275,8 @@
       } });
     popMenu($('btnMore'), items);
   }
-  function go(p) { S.page = p; try { localStorage.setItem('rc500-page', p); } catch (e) { } render(); window.scrollTo(0, 0); }
+  // The open tab is kept only for this visit (a reload stays put); a new visit always starts on Start.
+  function go(p) { S.page = p; try { sessionStorage.setItem('rc500-page', p); } catch (e) { } render(); window.scrollTo(0, 0); }
 
   /** A dialog that shows progress text; returns {set, close}. */
   function busy(text) {
@@ -1382,7 +1383,7 @@
 
     S.mem = RC0.factoryMemory(); S.sys = RC0.factorySystem();
     S.origMem = RC0.clone(S.mem); S.origSys = RC0.clone(S.sys);
-    try { S.page = localStorage.getItem('rc500-page') || 'start'; } catch (e) { S.page = 'start'; }
+    try { S.page = sessionStorage.getItem('rc500-page') || 'start'; localStorage.removeItem('rc500-page'); } catch (e) { S.page = 'start'; }
     if (!window.isSecureContext && !PF.isAndroid) {
       var https = 'https://jonsolberg.github.io/bossrc500editor/';
       $('banner').appendChild(h('div', { class: 'warn' }, 'This page is not served over https, so the browser blocks USB MIDI and saving to the pedal. ',
