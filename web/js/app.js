@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.11';
+  var VERSION = '2.13';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -197,7 +197,7 @@
     st.innerHTML = '';
     add(st, [
       h('span', { class: 'dot ' + (S.midi.connected ? 'ok' : 'off') }),
-      h('span', { class: 'only-wide' }, S.midi.connected ? 'Pedal connected' : 'Pedal not connected'),
+      h('span', { class: 'only-wide' }, !S.midi.connected ? 'Pedal not connected' : /RC-?500|BOSS|Roland/i.test(S.midi.name || 'RC-500') ? 'Pedal connected' : 'Connected to ' + S.midi.name + ' (not an RC-500)'),
       h('span', { class: 'sep only-wide' }, '·'),
       h('span', { class: 'only-wide' }, S.store ? 'Memories from your pedal' : 'Factory settings'),
       dirty ? h('span', { class: 'unsaved' }, 'unsaved') : null
@@ -938,7 +938,7 @@
     var fsa = typeof window.showDirectoryPicker === 'function';
     return h('div', { class: 'about' },
       h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
-      h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and control it live — all through the pedal’s USB port.'),
+      h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and play it live – all through the pedal’s USB port.'),
       h('p', { class: 'warnnote' }, 'Experimental: being tested on a real pedal. Make a backup before you save (⋯ › Back up the pedal’s data).'),
       h('h3', null, 'Getting started'),
       h('ol', null,
@@ -949,9 +949,25 @@
           ? 'The files are written straight to the pedal and checked, and the pedal is switched back so it reloads its memories.'
           : 'Your browser downloads the changed files — copy them into ROLAND/DATA on the drive, eject it and leave storage mode on the pedal.'))),
       h('p', null, 'The Start page shows where you are in these steps.'),
-      h('h3', null, 'Direct mode'),
-      h('p', null, 'Play the pedal from its on-screen panel. Hold REC/PLAY to undo and STOP (2 s) to clear. The RC-500 only listens to MIDI CC through a memory’s ASSIGNs, so first use “Set up memories…” and save to the pedal. It uses CC#80–89 on the pedal’s RX CTL channel. Tempo is sent as MIDI clock and needs no setup.'),
-      h('p', null, 'The pedal reports which tracks have a phrase and when playback starts and stops; the other lights follow your presses (↺ Lights resets them). The on-screen sliders set the track levels but can’t follow the pedal’s own sliders, which the RC-500 doesn’t send over USB.'),
+      h('h3', null, 'The pages'),
+      h('dl', { class: 'helpdl' },
+        h('dt', null, 'Start'), h('dd', null, 'The steps above, with what’s done and what’s next.'),
+        h('dt', null, 'Direct'), h('dd', null, 'Play the pedal from its panel on screen. The panel stays grey until an RC-500 is connected. ',
+          'The pedal only reacts to the screen through a memory’s Assign slots, so first use “Set up memories…” and save to the pedal. ',
+          'Hold REC/PLAY to undo and STOP to clear (2 seconds). Tempo is sent as MIDI clock and needs no setup. ',
+          'The pedal reports which tracks have a recording and when playback starts and stops; the other lights follow your presses (↺ Lights resets them). ',
+          'The track sliders set the levels on the pedal, but can’t follow the pedal’s own sliders – the RC-500 doesn’t send those over USB.'),
+        h('dt', null, 'Memory'), h('dd', null, 'Everything in the memory picked in the list: tracks, recording, playback, loop FX, rhythm, what the switches and pedals do, and the eight Assign slots. Copy, paste, swap and presets are at the top (⋯ on a phone).'),
+        h('dt', null, 'Loops'), h('dd', null, 'Which memories have recordings. Play them, save them as WAV, import any audio file or delete them.'),
+        h('dt', null, 'MIDI'), h('dd', null, 'Lower-level tools: storage mode on/off, change memory, start/stop, try the MIDI controls a memory listens to, and see every message to and from the pedal.'),
+        h('dt', null, 'System'), h('dd', null, 'Settings for the whole pedal: display, MIDI, inputs and outputs, which switches use the same function in every memory, and memory ranges for stepping through a set list.')),
+      h('h3', null, 'The ⋯ menu'),
+      h('ul', null,
+        h('li', null, h('b', null, 'Back up the pedal’s data'), ' – all memories and settings as a ZIP file. Do this before you save the first time.'),
+        h('li', null, h('b', null, 'Open a backup or folder'), ' – load a backup ZIP, or a ROLAND folder copied from the pedal.'),
+        h('li', null, h('b', null, 'Start from factory settings'), ' – begin from the pedal’s defaults instead of your memories.'),
+        h('li', null, h('b', null, 'Show stored values'), ' – the raw numbers stored for the memory and the system, read only, for troubleshooting.'),
+        h('li', null, h('b', null, 'Theme'), ' – automatic, light or dark.')),
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
@@ -959,7 +975,7 @@
         h('li', null, 'Secure page (needed for both): ', window.isSecureContext ? '✅' : '❌ open the https version')),
       h('h3', null, 'Good to know'),
       h('ul', null,
-        h('li', null, 'Tap ⓘ next to a setting for an explanation. Pedal functions and settings are described in plain words.'),
+        h('li', null, 'Tap ⓘ next to a setting for an explanation. Changes stay in the editor until you save; ↶ and ↷ in the header undo and redo them.'),
         h('li', null, 'The editor never deletes the pedal’s files: it writes the older of the two copies the RC-500 keeps (MEMORY1/2.RC0, SYSTEM1/2.RC0) with a newer save counter, so the previous version stays as a fallback. It warns if the pedal has newer changes than the ones you loaded.'),
         h('li', null, 'Imported audio is converted to 44.1 kHz 32-bit float stereo WAV, which the RC-500 reads directly.')),
       h('h3', null, 'Credits & licence'),

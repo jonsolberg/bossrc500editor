@@ -33,7 +33,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   for *Load from pedal* / *Save to pedal*, checks what it wrote and warns if the pedal has newer changes
 - **Plain names**: pedal functions and settings are described in plain words, with an ⓘ explanation next to
   most settings
-- **Direct mode**: play the pedal live from an on-screen copy of its panel — REC/PLAY, STOP and TRACK SELECT
+- **Direct mode** (greyed out until an RC-500 is connected): play the pedal live from an on-screen copy of its panel — REC/PLAY, STOP and TRACK SELECT
   footswitches (hold REC/PLAY to undo, hold STOP for 2 s to clear), TRACK 1/2 level sliders with status lights, the colour
   display, rhythm ON/OFF, TEMPO (tap or type a tempo; sent as MIDI clock), LOOP FX and the MEMORY/VALUE knob. Keyboard shortcuts on a computer
   (Space, S, T, R, F, ↑/↓). The RC-500 only reacts to MIDI CC through a memory's ASSIGNs, so *Set up memories*

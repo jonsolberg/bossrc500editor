@@ -266,10 +266,14 @@
   // ------------------------------------------------------------------ page
   var keyActions = {};
 
+  function isPedal(name) { return !name || /RC-?500|BOSS|Roland/i.test(name); }
+
   function page(api) {
     A = api; ensureSim();
     var h = A.h, S = A.S, mi = S.cur;
-    var have = installed(mi), conn = S.midi.connected;
+    // The panel only comes alive when an actual RC-500 (or at least a BOSS/Roland device) is connected.
+    var other = S.midi.connected && !isPedal(S.midi.name), conn = S.midi.connected && !other;
+    var have = installed(mi);
     function ok(id) { return conn && !!have[id]; }
     var missing = FUNCS.filter(function (f) { return f.def && !have[f.id]; }).length;
 
@@ -296,7 +300,7 @@
     var sel = footswitch('TRACK\nSELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T', 'trkled', 'red');
     keyActions = { ' ': rec, s: stop, t: sel };
 
-    var panel = h('div', { class: 'rcpanel' },
+    var panel = h('div', { class: 'rcpanel' + (conn ? '' : ' off'), 'aria-disabled': conn ? null : 'true' },
       // jacks along the top edge
       [144, 393, 473, 560, 660].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
       at(887, 40, h('div', { class: 'logo' }, h('span', { class: 'ls' }, 'LOOP STATION'), h('span', { class: 'mdl' }, 'RC-500'))),
@@ -340,12 +344,14 @@
       at(460, 420, h('span', { class: 'seam' })),
       // footswitches
       at(108, 572, rec), at(456, 572, stop), at(807, 572, sel));
-    var wrap = h('div', { class: 'rcwrap' }, panel);
+    var wrap = h('div', { class: 'rcwrap' + (conn ? '' : ' off') }, panel,
+      conn ? null : h('div', { class: 'offlabel' }, other ? 'Not an RC-500: ' + S.midi.name : 'Pedal not connected'));
     requestAnimationFrame(function () { fit(wrap, panel); });
 
     var notes = [];
     if (S.storage) notes.push(h('div', { class: 'dnote' }, h('span', null, 'The pedal is in storage mode, so it can’t play right now.'), h('button', { class: 'primary', onclick: function () { A.leaveStorage(); } }, 'Leave storage mode')));
-    if (!conn) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Connect the RC-500 over USB to play it from here.'), h('button', { class: 'primary', onclick: A.connectMidi }, 'Connect over USB MIDI')));
+    if (other) notes.push(h('div', { class: 'dnote' }, h('span', null, 'The editor is connected to “' + S.midi.name + '”, which isn’t an RC-500. Connect the pedal with a USB cable that carries data.')));
+    else if (!conn) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Connect the RC-500 over USB to play it from here.'), h('button', { class: 'primary', onclick: A.connectMidi }, 'Connect over USB MIDI')));
     var pendingSave = FUNCS.filter(function (f) { return f.def && !have[f.id]; }).length && !FUNCS.filter(function (f) { return f.def && !installed(mi, true)[f.id]; }).length;
     if (pendingSave) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is set up here, but not saved to the pedal yet. Save, put the file on the pedal and leave storage mode — then the controls work.')));
     else if (missing) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is not set up for Direct mode yet (' + missing + ' of the switches have no ASSIGN).'),
@@ -472,7 +478,7 @@
       e.preventDefault(); return true;
     }
     if (e.type !== 'keydown') return false;
-    var installedNow = installed(A.S.cur), conn = A.S.midi.connected;
+    var installedNow = installed(A.S.cur), conn = A.S.midi.connected && isPedal(A.S.midi.name);
     if (k === 'r' && conn && installedNow.rhy) { rhythm(); return true; }
     if (k === 'Enter' && conn) { tap(); return true; }
     if (k === 'f' && conn && installedNow.fx) { loopFx(); return true; }
