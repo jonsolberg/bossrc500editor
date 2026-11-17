@@ -50,6 +50,11 @@ If storage mode doesn't start by itself, use MENU › STORAGE › CONNECTING on 
 
 USB MIDI and writing to the drive need the https version, not a copy opened from your own disk.
 
+**Why not Safari, iPhone or iPad?** Safari has no Web MIDI, so it can't connect to the pedal, switch storage mode or
+play it in Direct mode. It also can't write to a folder or drive from a web page, so it can't save to the pedal. On
+iPhone and iPad every browser (Chrome and Firefox too) is built on Safari's engine and has the same limits. A
+native iOS app could do it, but there isn't one.
+
 ### Android
 
 Android's handling of the pedal's USB drive is unreliable: it only mounts the drive if the pedal is already in
