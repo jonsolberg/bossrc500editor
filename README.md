@@ -4,7 +4,7 @@ An editor for the **BOSS RC-500 Loop Station** that talks to the pedal through i
 no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app.
 
 > **Recommended: Chrome or Edge** (or another Chromium-based browser such as Opera) on a computer, or the Android app on a
-> phone – they work directly with the pedal. Make a backup (⋯ › Back up the pedal’s data) the first time you save to the
+> phone – they work directly with the pedal. Make a backup (System › Pedal data) the first time you save to the
 > pedal. Not affiliated with BOSS/Roland.
 
 **[Open the web version](https://jonsolberg.github.io/bossrc500editor/)** ·
@@ -45,15 +45,14 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   variation, start/stop, count-ins, fill, parts, tone), pedal/CTL/EXP functions and **ASSIGN 1–8** with target-aware
   min/max values
 - **System settings**: display, undo/redo, preferences, system pedal functions, MIDI, extents, input/output
-- ⋯ › Show stored values: a read-only view of every number stored for a memory and the system, for troubleshooting
+- System › Pedal data › Show stored values: a read-only view of every number stored for a memory and the system, for troubleshooting
 - Copy a memory to a range (choose which parts), copy/paste, swap, initialize; undo/redo
 - Presets: save a memory as a `.rc500.json` file and load it into any memory
 - **Loops**: see which memories have recorded phrases, play them, export them as WAV, import any audio file
   (WAV/MP3/M4A … converted to the RC-500 format, 44.1 kHz 32-bit float stereo) or delete them. In bulk:
-  **Export all** saves every loop to a folder, **Import a set** puts a folder of loops into the free tracks (naming
-  the memories and setting the tempo from "BPM…" in the file names), and **Delete all** clears the pedal. Handy for
-  BOSS TONE STUDIO's track sets: download them to the pedal there, export them here, and load them back whenever you
-  want (the tracks are BOSS's – keep your copies to yourself)
+  **Export all** saves every loop to a folder (named by memory and track), **Import a set** puts a folder of audio
+  files into the free tracks (naming the memories and setting the tempo from "BPM…" in the file names), and
+  **Delete all** clears the pedal
 - **MIDI page**: switch memories (program change), start/stop, play the CC numbers used by the memory's
   ASSIGNs (button + value slider), MIDI monitor, follow the pedal's memory changes
 - **Storage mode from the app**: the same SysEx that BOSS TONE STUDIO for RC sends turns the pedal's USB drive on/off,

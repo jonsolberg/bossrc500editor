@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.32';
+  var VERSION = '2.33';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -253,27 +253,22 @@
     box.style.top = (r.bottom + 6) + 'px';
   }
 
-  function moreMenu() {
+  var THEMES = { auto: ['◐', 'Theme: automatic'], light: ['☀', 'Theme: light'], dark: ['☾', 'Theme: dark'] };
+  function nextTheme() {
     var t = localStorage.getItem('rc500-theme') || 'auto';
-    var next = { auto: 'light', light: 'dark', dark: 'auto' }[t];
-    var cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
-    // MIDI and Help have their own tabs on a wide screen; on a phone they live here.
+    try { localStorage.setItem('rc500-theme', { auto: 'light', light: 'dark', dark: 'auto' }[t]); } catch (e) { }
+    applyTheme();
+  }
+  /** On a wide screen the header button just switches theme; on a phone MIDI and Help live here too. */
+  function moreMenu() {
     var narrow = window.matchMedia('(max-width: 819px)').matches;
-    var items = [];
-    items.push(
-      { label: '⬇ Back up the pedal’s data', disabled: !S.store, onclick: function () { backup().catch(errToast); } },
-      { label: '📁 Open a backup or folder…', onclick: openFolder },
-      { label: '🏭 Start from factory settings', onclick: openFactory },
-      null,
-      { label: '🔍 Show stored values', onclick: storedValuesDialog });
-    if (narrow) items.push(
+    if (!narrow) { nextTheme(); return; }
+    var t = localStorage.getItem('rc500-theme') || 'auto';
+    popMenu($('btnMore'), [
       { label: '⇄ MIDI', onclick: function () { go('remote'); } },
-      { label: '? Help', onclick: function () { go('about'); } });
-    items.push(null,
-      { label: '◐ Theme: ' + cap(t) + ' (switch to ' + next + ')', onclick: function () {
-        try { localStorage.setItem('rc500-theme', next); } catch (e) { } applyTheme();
-      } });
-    popMenu($('btnMore'), items);
+      { label: '? Help', onclick: function () { go('about'); } },
+      null,
+      { label: THEMES[t][0] + ' ' + THEMES[t][1] + ' (tap to change)', onclick: nextTheme }]);
   }
   // The open tab is kept only for this visit (a reload stays put); a new visit always starts on Start.
   function go(p) {
@@ -611,6 +606,14 @@
         sSel('Pass on USB MIDI to', 'MIDI', 'UsbThru', L.thru, 'Where MIDI messages arriving over USB are passed on.')
       ]),
       card('Memory ranges', [h('p', { class: 'info' }, 'Limits which memories a footswitch set to “Next memory” or “Previous memory” steps through – for example a set list in memories 10–15, so you don’t have to step past the others. You can keep five ranges and switch between them with a switch set to “Next memory range”. The pedal calls this EXTENT.'), sSel('Range in use', 'SETUP', 'ExtentCh', L.extent), h('p', { class: 'info' }, 'First and last memory of each range:')].concat(ext)),
+      card('Pedal data', [
+        h('p', { class: 'info' }, 'Backups, other sources for the memories and a read-only view of the stored values.'),
+        h('div', { class: 'btnrow wrap' },
+          h('button', { disabled: !S.store, onclick: function () { backup().catch(errToast); } }, '⬇ Back up the pedal’s data'),
+          h('button', { onclick: openFolder }, '📁 Open a backup or folder…'),
+          h('button', { onclick: openFactory }, '🏭 Start from factory settings'),
+          h('button', { onclick: storedValuesDialog }, '🔍 Show stored values'))
+      ]),
       card('Input / output', [
         sChk('Phantom power', 'INPUT', 'Phantom', 'Power for condenser microphones on MIC IN.'),
         sSel('Mic goes to', 'INPUT', 'MicOut', L.micOut, 'Which outputs the live mic sound goes to.'),
@@ -713,12 +716,16 @@
 
   function loopCell(i, t, f) {
     var tempo = RC0.get(blk(i), 'MASTER', 'Tempo') / 10;
+    if (f && !f.secs) {
+      var wl = RC0.get(blk(i), 'TRACK' + t, 'WavLen');
+      f.secs = RC0.get(blk(i), 'TRACK' + t, 'WavStat') && wl > 0 ? wl / 44100 : Math.max(0, f.size - 64) / 8 / 44100;
+    }
     var bt = P.beatOf(RC0.get(blk(i), 'RHYTHM', 'Beat'));
     var playing = S.player && S.player.key === i + '_' + t;
     return h('div', { class: 'loopcell' },
       f ? h('span', { class: 'fname', title: f.name + ' — ' + fmtSize(f.size) }, f.name.replace(/\.wav$/i, ''), h('small', null, ' ' + fmtSize(f.size) +
         (f.secs ? ' · ' + f.secs.toFixed(1) + ' s ≈ ' + (f.secs * tempo / 60 / (bt[0] * 4 / bt[1])).toFixed(1) + ' meas' : ''))) : h('span', { class: 'empty-l' }, '—'),
-      f ? h('button', { class: 'small', title: playing ? 'Stop' : 'Play', onclick: function () { playLoop(i, t, f); } }, playing ? '■' : '▶') : null,
+      f ? h('button', { class: 'small' + (playing ? ' playing' : ''), title: playing ? 'Stop' : 'Play', onclick: function () { playLoop(i, t, f); } }, playing ? '■' : '▶') : null,
       f ? h('button', { class: 'small', title: 'Export WAV', onclick: function () { exportLoop(i, t, f); } }, '⬇') : null,
       h('button', { class: 'small', title: 'Import audio (WAV, MP3, …) into this track', onclick: function () { importLoop(i, t); } }, '⬆'),
       f && LS().writable ? h('button', { class: 'small danger', title: 'Delete this phrase', onclick: function () { deleteLoop(i, t, f); } }, '✕') : null);
@@ -823,7 +830,7 @@
     return out;
   }
 
-  /** Import many audio files at once into free tracks, e.g. a BOSS TONE STUDIO track set saved with Export all. */
+  /** Import many audio files at once into free tracks (e.g. loops saved earlier with Export all). */
   async function importSetDialog() {
     if (!S.loops) await scanLoops();
     var files = [];
@@ -847,7 +854,7 @@
       h('div', { class: 'rangein' }, mode),
       h('label', { class: 'inl' }, nameCb, ' Name the memories after the files (12 characters)'), h('br'),
       h('label', { class: 'inl' }, tempoCb, ' Set the memory tempo from “BPM…” in the file name'),
-      h('p', { class: 'info' }, 'WAV files already in the RC-500 format (as BOSS TONE STUDIO saves them) are copied unchanged; other audio is converted. Save to pedal afterwards to update the memories.')),
+      h('p', { class: 'info' }, 'WAV files already in the RC-500 format (44.1 kHz, 32-bit float, stereo) are copied unchanged; other audio is converted. Save to pedal afterwards to update the memories.')),
       [{ label: 'Cancel' }, {
         label: 'Import', primary: true, onclick: function () {
           if (!files.length) { toast('Choose a folder or files first', 'err'); return false; }
@@ -1235,7 +1242,7 @@
     return h('div', { class: 'about' },
       h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
       h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and play it live – all through the pedal’s USB port.'),
-      h('p', { class: 'info' }, 'Make a backup the first time you save to the pedal (⋯ › Back up the pedal’s data).'),
+      h('p', { class: 'info' }, 'Make a backup the first time you save to the pedal (System › Pedal data › Back up the pedal’s data).'),
       h('h3', null, 'Getting started'),
       h('ol', null,
         h('li', null, 'Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO — that jack is its power switch) and connect it with a USB cable that carries data (on a phone: USB-C/OTG).'),
@@ -1254,16 +1261,16 @@
           'The pedal reports which tracks have a recording and when playback starts and stops; the other lights follow your presses (Reset lights, under the pedal, puts them right). ',
           'The track sliders set the levels on the pedal, but can’t follow the pedal’s own sliders – the RC-500 doesn’t send those over USB.'),
         h('dt', null, 'Memory'), h('dd', null, 'Everything in the memory picked in the list: tracks, recording, playback, loop FX, rhythm, what the switches and pedals do, and the eight Assign slots. Copy, paste, swap and presets are at the top (⋯ on a phone).'),
-        h('dt', null, 'Loops'), h('dd', null, 'Which memories have recordings. Play them, save them as WAV, import any audio file or delete them.'),
+        h('dt', null, 'Loops'), h('dd', null, 'Which memories have recordings. Play them, save them as WAV, import any audio file or delete them – one by one, or all at once with Export all, Import a set and Delete all.'),
         h('dt', null, 'MIDI'), h('dd', null, 'Lower-level tools: storage mode on/off, change memory, start/stop, try the MIDI controls a memory listens to, and see every message to and from the pedal.'),
         h('dt', null, 'System'), h('dd', null, 'Settings for the whole pedal: display, MIDI, inputs and outputs, which switches use the same function in every memory, and memory ranges for stepping through a set list.')),
-      h('h3', null, 'The ⋯ menu'),
+      h('h3', null, 'System › Pedal data'),
       h('ul', null,
         h('li', null, h('b', null, 'Back up the pedal’s data'), ' – all memories and settings as a ZIP file. Do this before you save the first time.'),
         h('li', null, h('b', null, 'Open a backup or folder'), ' – load a backup ZIP, or a ROLAND folder copied from the pedal.'),
         h('li', null, h('b', null, 'Start from factory settings'), ' – begin from the pedal’s defaults instead of your memories.'),
-        h('li', null, h('b', null, 'Show stored values'), ' – the raw numbers stored for the memory and the system, read only, for troubleshooting.'),
-        h('li', null, h('b', null, 'Theme'), ' – automatic, light or dark.')),
+        h('li', null, h('b', null, 'Show stored values'), ' – the raw numbers stored for the memory and the system, read only, for troubleshooting.')),
+      h('p', null, 'The ◐ button at the top right switches between automatic, light and dark theme (on a phone it is in the ⋯ menu).'),
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
@@ -1660,7 +1667,12 @@
   function applyTheme() {
     var t = localStorage.getItem('rc500-theme') || 'auto';
     document.documentElement.dataset.theme = t;
+    var b = $('btnMore'); if (!b) return;
+    var narrow = window.matchMedia('(max-width: 819px)').matches;
+    b.textContent = narrow ? '⋯' : THEMES[t][0];
+    b.title = narrow ? 'More' : THEMES[t][1] + ' – click to change';
   }
+  window.matchMedia('(max-width: 819px)').addEventListener('change', function () { try { applyTheme(); } catch (e) { } });
 
   // ------------------------------------------------------------------ boot
   function boot() {

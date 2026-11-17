@@ -313,11 +313,13 @@
     var sel = footswitch('TRACK\nSELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T', 'trkled', sim.cur === 2 ? 'blue' : 'red');
     keyActions = { ' ': rec, s: stop, t: sel };
 
-    var panel = h('div', { class: 'rcpanel' + (conn ? '' : ' off'), 'aria-disabled': conn ? null : 'true' },
+    // In storage mode the pedal can't play: the panel stays red but dimmed and doesn't react.
+    var dim = conn && S.storage;
+    var panel = h('div', { class: 'rcpanel' + (conn ? (dim ? ' dim' : '') : ' off'), 'aria-disabled': conn && !dim ? null : 'true', title: dim ? 'The pedal is in storage mode – leave storage mode to play it' : null },
       // jacks along the top edge
       // jacks along the top edge, left to right as seen from above
       [144, 400, 490, 588, 690].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
-      [238, 312].map(function (x) { return at(x, -9, h('span', { class: 'jack mini' })); }),
+      [238, 312].map(function (x) { return at(x, -9, h('span', { class: 'jack mini black' })); }),
       at(832, -3, h('span', { class: 'xlr' })),
       [[144, 'CTL 1,2/EXP'], [238, 'IN'], [312, 'OUT'], [400, 'B'], [490, 'A/MONO'], [588, 'B'], [690, 'A/MONO'], [832, 'MIC IN']]
         .map(function (j) { return at(j[0], -36, h('span', { class: 'jlabel' }, j[1])); }),
@@ -380,8 +382,8 @@
 
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'DIRECT')),
       h('div', { class: 'tools' },
-        h('button', { disabled: !conn, onclick: function () { A.midiSend([0xFA]); ['1', '2'].forEach(function (t) { if (sim.tr[t].st === 'stop') sim.tr[t].st = 'play'; }); if (sim.rhythm === 'ready') sim.rhythm = 'on'; updateLights(); }, title: 'MIDI Start: start all tracks' }, '▶ All start'),
-        h('button', { disabled: !conn, onclick: function () { A.midiSend([0xFC]); ['1', '2'].forEach(function (t) { var s = sim.tr[t]; if (s.st !== 'empty') s.st = 'stop'; }); updateLights(); }, title: 'MIDI Stop: stop everything' }, '■ All stop'),
+        h('button', { disabled: !conn || S.storage, onclick: function () { A.midiSend([0xFA]); ['1', '2'].forEach(function (t) { if (sim.tr[t].st === 'stop') sim.tr[t].st = 'play'; }); if (sim.rhythm === 'ready') sim.rhythm = 'on'; updateLights(); }, title: 'MIDI Start: start all tracks' }, '▶ All start'),
+        h('button', { disabled: !conn || S.storage, onclick: function () { A.midiSend([0xFC]); ['1', '2'].forEach(function (t) { var s = sim.tr[t]; if (s.st !== 'empty') s.st = 'stop'; }); updateLights(); }, title: 'MIDI Stop: stop everything' }, '■ All stop'),
         have.fx ? h('button', { id: 'fxbtn', class: sim.fx ? 'on' : '', disabled: !conn, onclick: loopFx, title: 'Loop FX on/off (key: F)' }, 'LOOP FX') : null,
         h('button', { onclick: setupDialog }, 'Set up memories…'))),
     notes, wrap, lightsBar(conn), clockStrip(conn),
@@ -511,6 +513,7 @@
     if (!A || A.S.page !== 'direct' || e.ctrlKey || e.metaKey || e.altKey) return false;
     if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return false;
     if (document.querySelector('.modal-back')) return false;
+    if (A.S.storage) return false;                                   // the pedal can't play in storage mode
     var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     var sw = keyActions[k];
     if (sw) {
