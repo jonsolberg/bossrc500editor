@@ -31,8 +31,8 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 - **Start page** that walks you through connecting, loading, editing and saving, and shows where you are
 - **Automatic**: connects over USB MIDI by itself, remembers the pedal's drive, switches storage mode on and off
   for *Load from pedal* / *Save to pedal*, checks what it wrote and warns if the pedal has newer changes
-- **Plain names**: pedal functions and settings are described in plain words (the pedal's own short name in
-  [brackets]), with an ⓘ explanation next to most settings
+- **Plain names**: pedal functions and settings are described in plain words, with an ⓘ explanation next to
+  most settings
 - **Direct mode**: play the pedal live from an on-screen copy of its panel — REC/PLAY, STOP and TRACK SELECT
   footswitches (hold REC/PLAY to undo, hold STOP for 2 s to clear), TRACK 1/2 level sliders with status lights, the colour
   display, rhythm ON/OFF, TEMPO (tap or type a tempo; sent as MIDI clock), LOOP FX and the MEMORY/VALUE knob. Keyboard shortcuts on a computer
@@ -44,7 +44,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   variation, start/stop, count-ins, fill, parts, tone), pedal/CTL/EXP functions and **ASSIGN 1–8** with target-aware
   min/max values
 - **System settings**: display, undo/redo, preferences, system pedal functions, MIDI, extents, input/output
-- An "all values" view of every field stored in the files, for anything without its own control
+- "Other stored values": the numbers the pedal stores that have no control of their own, explained and editable
 - Copy a memory to a range (choose which parts), copy/paste, swap, initialize; undo/redo
 - Presets: save a memory as a `.rc500.json` file and load it into any memory
 - **Loops**: see which memories have recorded phrases, play them, export them as WAV, import any audio file

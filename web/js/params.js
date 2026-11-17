@@ -13,33 +13,33 @@
 
 
   var L = {
-    offOn: ['OFF', 'ON'],
-    pan: range(0, 100, function (i) { return i < 50 ? 'L' + (50 - i) : i > 50 ? 'R' + (i - 50) : 'CENTER'; }),
-    start: ['IMMEDIATE', 'FADE IN'],
-    stop: ['IMMEDIATE', 'FADE OUT', 'LOOP END'],
-    measure: ['AUTO', 'FREE', '16th note', '8th note', 'Quarter note', 'Dotted quarter', 'Half note', 'Dotted half']
-      .concat(range(1, 16, function (i) { return i + (i === 1 ? ' MEAS' : ' MEAS'); })),
-    input: ['ALL', 'MIC IN', 'INST IN', 'INST IN-A', 'INST IN-B', 'MIC/INST'],
-    output: ['ALL', 'OUT-A', 'OUT-B'],
-    dubMode: ['OVERDUB', 'REPLACE'],
-    recAction: ['REC → DUB', 'REC → PLAY'],
-    recSrc: ['ALL', 'MIC IN', 'INST', 'INST-A', 'INST-B'],
-    playMode: ['MULTI', 'SINGLE'],
-    singleChange: ['IMMEDIATE', 'LOOP END'],
-    fadeTime: ['16th note', '8th note', 'Quarter note', 'Half note'].concat(range(1, 64, function (i) { return i + ' MEAS'; })),
-    allStart: ['ALL', 'TRACK1', 'TRACK2'],
-    trkChain: ['PARALLEL', 'SERIES'],
-    trkSelect: ['TRACK 1', 'TRACK 2'],
-    fxType: ['SCATTER1', 'SCATTER2', 'SCATTER3', 'SCATTER4', 'REPEAT1', 'REPEAT2', 'REPEAT3', 'SHIFT1', 'SHIFT2', 'VINYL FLICK'],
+    offOn: ['Off', 'On'],
+    pan: range(0, 100, function (i) { return i < 50 ? 'L' + (50 - i) : i > 50 ? 'R' + (i - 50) : 'Center'; }),
+    start: ['Immediately', 'Fade in'],
+    stop: ['Immediately', 'Fade out', 'At the loop end'],
+    measure: ['Auto', 'Free', '16th note', '8th note', 'Quarter note', 'Dotted quarter', 'Half note', 'Dotted half']
+      .concat(range(1, 16, function (i) { return i + (i === 1 ? ' measure' : ' measures'); })),
+    input: ['All inputs', 'Mic', 'Instrument A+B', 'Instrument A', 'Instrument B', 'Mic + instrument'],
+    output: ['Outputs A+B', 'Output A', 'Output B'],
+    dubMode: ['Overdub', 'Replace'],
+    recAction: ['Record, then overdub', 'Record, then play'],
+    recSrc: ['All inputs', 'Mic', 'Instrument', 'Instrument A', 'Instrument B'],
+    playMode: ['Together', 'One at a time'],
+    singleChange: ['Immediately', 'At the loop end'],
+    fadeTime: ['16th note', '8th note', 'Quarter note', 'Half note'].concat(range(1, 64, function (i) { return i + (i === 1 ? ' measure' : ' measures'); })),
+    allStart: ['Both tracks', 'Track 1', 'Track 2'],
+    trkChain: ['Parallel', 'Series'],
+    trkSelect: ['Track 1', 'Track 2'],
+    fxType: ['Scatter 1', 'Scatter 2', 'Scatter 3', 'Scatter 4', 'Repeat 1', 'Repeat 2', 'Repeat 3', 'Shift 1', 'Shift 2', 'Vinyl flick'],
     variation: ['A', 'B'],
-    varChange: ['MEASURE', 'LOOP END'],
+    varChange: ['Next measure', 'At the loop end'],
     kit: ['Studio', 'Live', 'Light', 'Heavy', 'Rock', 'Metal', 'Jazz', 'Brush', 'Cajon', 'Drum&Bass', 'R&B', 'Dance', 'Techno', 'Dance Beats', 'HipHop', '808+909'],
     beat: range(2, 7, function (i) { return i + '/4'; }).concat(range(5, 15, function (i) { return i + '/8'; })),
-    rhyStart: ['LOOP START', 'REC END', 'BEFORE LOOP'],
-    rhyStop: ['OFF', 'LOOP STOP', 'REC END'],
-    count: ['OFF', '1MEAS'],
+    rhyStart: ['With the loop', 'After recording', 'Before recording'],
+    rhyStop: ['Keeps playing', 'With the loop', 'After recording'],
+    count: ['Off', '1 measure'],
     tone: range(-10, 10, function (i) { return i > 0 ? '+' + i : String(i); }),
-    rhyState: ['OFF', 'ON (READY)'],
+    rhyState: ['Off', 'On (ready)'],
     pdlCtl: ['OFF', 'T1 REC/PLY', 'T1 R/P/S', 'T1 R/P/S(CLR)', 'T1 MOM R/P', 'T1 PLY/STP', 'T1 P/S(CLR)',
       'T1 STOP', 'T1 STOP(TAP)', 'T1 STOP(CLR)', 'T1 STOP(T/C)', 'T1 CLEAR', 'T1 UND/RED', 'T1 REVERSE',
       'T2 REC/PLY', 'T2 R/P/S', 'T2 R/P/S(CLR)', 'T2 MOM R/P', 'T2 PLY/STP', 'T2 P/S(CLR)', 'T2 STOP',
@@ -53,21 +53,21 @@
       'FX CONTROL', 'RHYTHM LEV1', 'RHYTHM LEV2', 'MEMORY LEV1', 'MEMORY LEV2'],
     srcMode: ['MOMENT', 'TOGGLE'],
     contrast: range(1, 10),
-    dispMode: ['STATUS', 'POSITION', '2TRACK POS', 'STATUS+POS', 'NUMBER+POS', 'NAME+POS', 'BEAT+POS', 'BEAT'],
-    undoRedo: ['HOLD', 'RELEASE'],
-    extent: ['EXT1', 'EXT2', 'EXT3', 'EXT4', 'EXT5'],
+    dispMode: ['Track status', 'Loop position', 'Position of both tracks', 'Status and position', 'Memory number and position', 'Memory name and position', 'Beat and position', 'Beat'],
+    undoRedo: ['While holding the switch', 'When you let go'],
+    extent: ['Range 1', 'Range 2', 'Range 3', 'Range 4', 'Range 5'],
     extVal: range(1, 99, function (i) { return (i < 10 ? '0' : '') + i; }),
-    pref: ['MEMORY', 'SYSTEM'],
+    pref: ['Each memory', 'System (same in every memory)'],
     ch16: range(1, 16),
-    txCh: range(1, 16).concat(['RX CTL']),
-    syncClock: ['AUTO', 'INTERNAL', 'USB', 'MIDI'],
-    syncStart: ['OFF', 'ALL', 'RHYTHM'],
-    thru: ['OFF', 'MIDI OUT', 'USB OUT', 'USB/MIDI'],
-    micOut: ['OUT-A&B', 'OUT-A', 'OFF'],
-    instOut: ['OUT-A&B', 'OUT-A', 'OUT-B', 'OFF'],
-    rhyOut: ['OUT-A&B', 'OUT-A', 'OUT-B', 'LOOP', 'OFF'],
-    peak: ['ALL IN', 'MIC IN', 'INST IN', 'LOOP&RHYTHM'],
-    quantize: ['OFF', 'MEASURE']
+    txCh: range(1, 16).concat(['Same as receive channel']),
+    syncClock: ['Auto (USB or MIDI IN if there is a clock)', 'Own tempo only', 'USB', 'MIDI IN jack'],
+    syncStart: ['Nothing', 'Tracks and rhythm', 'Rhythm only'],
+    thru: ['Nowhere', 'MIDI OUT jack', 'USB', 'MIDI OUT and USB'],
+    micOut: ['Outputs A and B', 'Output A', 'Not heard'],
+    instOut: ['Outputs A and B', 'Output A', 'Output B', 'Not heard'],
+    rhyOut: ['Outputs A and B', 'Output A', 'Output B', 'Into the loop', 'Not heard'],
+    peak: ['All inputs', 'Mic', 'Instrument', 'Loop and rhythm'],
+    quantize: ['Off', 'To the measure']
   };
 
   var CCS = range(1, 31, function (i) { return 'CC#' + i; }).concat(range(64, 95, function (i) { return 'CC#' + i; }));
@@ -124,7 +124,7 @@
       items = [[0, true], [2, true], [3, true], [4, y === 4 || x === 8 || x === 10 || x === 14], [5, y === 8 && x % 3 === 0],
         [6, x === 2 || x === y], [7, x === 3 || x === 6 || x === 12], [8, x === y]];
     }
-    return items.map(function (it) { return { value: it[0], label: it[0] ? noteName(it[0]) : 'THRU', enabled: it[1] }; });
+    return items.map(function (it) { return { value: it[0], label: it[0] ? noteName(it[0]) : 'Off (thru)', enabled: it[1] }; });
   }
   function noteName(code) { return ({ 1: '32nd note', 2: '16th note', 3: '8th note', 4: 'Quarter note', 5: 'Dotted quarter', 6: 'Half note', 7: 'Dotted half', 8: 'Whole note' })[code]; }
   function fxKind(type) { return type <= 3 ? 'scatter' : type <= 6 ? 'repeat' : type <= 8 ? 'shift' : 'vinyl'; }
@@ -150,7 +150,7 @@
       case 'REC ACTION': return L.recAction;
       case 'A.REC SENS': return range(1, 100);
       case 'A.REC SRC': return L.recSrc;
-      case 'LOOP LENGTH': return ['AUTO'].concat(range(1, 25362));
+      case 'LOOP LENGTH': return ['Auto'].concat(range(1, 25362));
       case 'PLAY MODE': return L.playMode;
       case 'SINGL CHNGE': return L.singleChange;
       case 'FADE TIME': return L.fadeTime;

@@ -64,8 +64,8 @@
     'MEMORY LEV1': 'Memory level (0–200)',
     'MEMORY LEV2': 'Memory level (0 up to its set level)',
     'MIC MUTE': 'Mute the microphone',
-    'EXTENT INC': 'Next memory range (EXTENT)',
-    'EXTENT DEC': 'Previous memory range (EXTENT)',
+    'EXTENT INC': 'Next memory range',
+    'EXTENT DEC': 'Previous memory range',
     'DUB MODE': 'Overdub or replace',
     'REC ACTION': 'Order of record/play/overdub',
     'AUTO REC': 'Auto record on/off',
@@ -91,7 +91,7 @@
     'TONE LOW': 'Rhythm bass tone', 'TONE HIGH': 'Rhythm treble tone',
     // assign sources
     'PEDAL1': 'REC/PLAY switch', 'PEDAL2': 'STOP switch', 'PEDAL3': 'TRACK SELECT switch',
-    'EXP PEDAL': 'Expression pedal (CTL 1,2/EXP jack)', 'CTL1 PEDAL': 'Footswitch CTL1', 'CTL2 PEDAL': 'Footswitch CTL2',
+    'EXP PEDAL': 'Expression pedal', 'CTL1 PEDAL': 'Footswitch CTL1', 'CTL2 PEDAL': 'Footswitch CTL2',
     'TR1 KNOB': 'TRACK 1 slider', 'TR2 KNOB': 'TRACK 2 slider',
     'TR1 PLY/STOP': 'When track 1 starts/stops', 'TR2 PLY/STOP': 'When track 2 starts/stops',
     'CUR TR CHG': 'When the current track changes', 'SYNC START': 'MIDI start from another device'
@@ -101,18 +101,16 @@
   function plain(code, ctx) {
     if (OTHER[code]) return OTHER[code];
     var m = /^CC#(\d+)$/.exec(code);
-    if (m) return ctx === 'source' ? 'MIDI CC#' + m[1] + ' from a controller' : 'Send MIDI CC#' + m[1];
+    if (m) return ctx === 'source' ? 'MIDI CC#' + m[1] : 'Send MIDI CC#' + m[1];
     m = /^(T1|T2|CUR) (.+)$/.exec(code);
+    if (m && ctx === 'target' && m[2] === 'STOP') return TRACK[m[1]] + ': stop mode (immediately / fade out / at the end of the loop)';
     if (m && ACTION[m[2]]) return TRACK[m[1]] + ': ' + ACTION[m[2]];
     return code;
   }
 
-  /** [value, label] options with plain text; the pedal's name follows in brackets. */
+  /** [value, label] options in plain words. */
   function options(list, ctx) {
-    return list.map(function (code, i) {
-      var p = plain(code, ctx);
-      return [i, p === code ? code : p + '  [' + code + ']'];
-    });
+    return list.map(function (code, i) { return [i, plain(code, ctx)]; });
   }
 
   root.RCNames = { plain: plain, options: options };

@@ -366,3 +366,9 @@ select.dim { opacity: .55; }
 .row.stack > label { color: var(--text); }
 .brand .appicon { display: block; border-radius: 5px; }
 @media (max-width: 819px) { .status .unsaved { display: none; } .brand .appicon { display: none; } }
+.info.lead { max-width: 900px; margin: 0 0 12px; }
+
+.rawhelp p { margin: 8px 0; font-size: 13px; color: var(--muted); max-width: 900px; }
+.rawsec h4 small { color: var(--muted); font-weight: 400; }
+.rawgrid label.chg span { color: var(--dirty); font-weight: 600; }
+.rawgrid label.chg input { border-color: var(--dirty); }

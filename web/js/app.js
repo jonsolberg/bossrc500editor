@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.5';
+  var VERSION = '2.7';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -173,18 +173,22 @@
   function card(title, body, extra) { return h('section', { class: 'card ' + (extra || '') }, h('h3', null, title), body); }
 
   // shorthand builders bound to memory / system
+  // Fields that have their own control on the page (filled while rendering), so "All values" can leave them out.
+  var covered = { mem: {}, sys: {} };
+  function cover(db, sec, key, label) { var k = sec + '.' + key; if (label || !covered[db][k]) covered[db][k] = label || true; }
   function M(sec, key) {
+    cover('mem', sec, key);
     return {
       v: mget(sec, key),
       set: function (v) { mset(sec, key, v); render(); }
     };
   }
-  function Sy(sec, key) { return { v: sget(sec, key), set: function (v) { sset(sec, key, v); render(); } }; }
-  function mSel(label, sec, key, list, hint) { var f = M(sec, key); return row(label, sel(list, f.v, f.set), hint); }
-  function mChk(label, sec, key, hint) { var f = M(sec, key); return row(label, chk(f.v, f.set), hint); }
-  function mLvl(label, sec, key, max, hint) { var f = M(sec, key); return row(label, slider(f.v, 0, max || 200, f.set), hint); }
-  function sSel(label, sec, key, list, hint) { var f = Sy(sec, key); return row(label, sel(list, f.v, f.set), hint); }
-  function sChk(label, sec, key, hint) { var f = Sy(sec, key); return row(label, chk(f.v, f.set), hint); }
+  function Sy(sec, key) { cover('sys', sec, key); return { v: sget(sec, key), set: function (v) { sset(sec, key, v); render(); } }; }
+  function mSel(label, sec, key, list, hint) { cover('mem', sec, key, label); var f = M(sec, key); return row(label, sel(list, f.v, f.set), hint); }
+  function mChk(label, sec, key, hint) { cover('mem', sec, key, label); var f = M(sec, key); return row(label, chk(f.v, f.set), hint); }
+  function mLvl(label, sec, key, max, hint) { cover('mem', sec, key, label); var f = M(sec, key); return row(label, slider(f.v, 0, max || 200, f.set), hint); }
+  function sSel(label, sec, key, list, hint) { cover('sys', sec, key, label); var f = Sy(sec, key); return row(label, sel(list, f.v, f.set), hint); }
+  function sChk(label, sec, key, hint) { cover('sys', sec, key, label); var f = Sy(sec, key); return row(label, chk(f.v, f.set), hint); }
 
   // ------------------------------------------------------------------ chrome (header + memory list)
   function refreshChrome() {
@@ -315,19 +319,19 @@
       mLvl('Level', sec, 'PlyLvl', 200, 'Playback level (0–200, 100 = unity)'),
       (function () { var f = M(sec, 'Pan'); return row('Pan', slider(f.v, 0, 100, f.set, function (v) { return L.pan[v]; })); })(),
       mChk('Reverse', sec, 'Rev', 'Reverse playback. You cannot overdub a reversed track.'),
-      mChk('1-shot', sec, 'One', 'Play the phrase once and stop; REC/PLY retriggers.'),
-      mChk('Loop FX', sec, 'LoopFx', 'Apply LOOP FX to this track.'),
-      mSel('Start', sec, 'StrtMod', L.start),
-      mSel('Stop', sec, 'StpMod', L.stop),
-      row('Measure', sel(L.measure, meas.v, function (v) {
+      mChk('Play once', sec, 'One', 'Play the phrase once and stop (one-shot); press again to play it again.'),
+      mChk('Loop FX', sec, 'LoopFx', 'Let the loop effect work on this track.'),
+      mSel('Starts', sec, 'StrtMod', L.start, 'How the track starts playing.'),
+      mSel('Stops', sec, 'StpMod', L.stop, 'How the track stops when you press STOP: at once, with a fade out, or when the loop reaches its end.'),
+      row('Loop length', sel(L.measure, meas.v, function (v) {
         begin(); mset(sec, 'Measure', v);
         var mf = P.measureFields(v); Object.keys(mf).forEach(function (k) { mset(sec, k, mf[k]); });
         commit(); render();
-      }), 'Number of measures (only used with LOOP SYNC on)'),
-      mChk('Loop sync', sec, 'LoopSync', 'Align the start of track 1 and 2 phrases.'),
-      mChk('Tempo sync', sec, 'TempoSync', 'Play at the memory tempo (on) or the tempo it was recorded at (off).'),
-      mSel('Input', sec, 'Input', L.input),
-      mSel('Output', sec, 'Output', L.output),
+      }), 'Auto: the same length as the first track. Free: as long as you record. Otherwise a fixed length. Only used when “Sync with the other track” is on.'),
+      mChk('Sync with the other track', sec, 'LoopSync', 'Keep the loop in step with the other track (LOOP SYNC).'),
+      mChk('Follow the memory tempo', sec, 'TempoSync', 'On: play at the memory’s tempo. Off: play at the tempo it was recorded at (TEMPO SYNC).'),
+      mSel('Records from', sec, 'Input', L.input),
+      mSel('Plays to', sec, 'Output', L.output),
       h('p', { class: 'info' }, ws ? 'Recorded phrase: ' + (wl ? wl.toLocaleString() + ' samples, ' : '') + 'recorded at ' + (tempo / 10).toFixed(1) + ' BPM' : 'No phrase recorded')
     ]);
   }
@@ -368,6 +372,7 @@
         h('button', { class: 'danger', onclick: resetMemory }, 'Initialize')));
 
     var rhythmOn = mget('RHYTHM', 'State');
+    cover('mem', 'RHYTHM', 'State', 'Rhythm on'); cover('mem', 'RHYTHM', 'Beat', 'Time signature');
     var fxType = mget('LOOPFX', 'FxType'), kind = P.fxKind(fxType);
     var tempo = M('MASTER', 'Tempo');
 
@@ -390,55 +395,55 @@
     return [head, h('div', { class: 'grid' },
       trackCard(1), trackCard(2),
       card('Record', [
-        mSel('Dub mode', 'MASTER', 'DubMode', L.dubMode, 'OVERDUB layers new playing on top. REPLACE records over what was there, like a delay that keeps changing.'),
-        mSel('Rec action', 'MASTER', 'RecAction', L.recAction, 'What REC/PLAY does after a recording: go straight to overdubbing, or to playback first.'),
-        (function () { var f = M('MASTER', 'RecQuantize'); return row('Quantize', sel(L.quantize, f.v ? 1 : 0, function (v) { f.set(v ? 2 : 0); }), 'MEASURE moves the start and end of a recording to the nearest measure when the rhythm or another synced track is running.'); })(),
-        mChk('Auto record', 'MASTER', 'AutoRec', 'REC/PLAY waits, and recording starts when you start playing.'),
-        (function () { var f = M('MASTER', 'AutoRecSens'); return row('Auto rec level', slider(f.v, 1, 100, f.set), 'How loud you must play before auto record starts (higher = reacts to softer playing).'); })(),
-        mSel('Auto rec input', 'MASTER', 'AutoRecSrc', L.recSrc, 'Which input auto record listens to.'),
-        (function () { var f = M('MASTER', 'LpLen'); return row('Loop length', [num(f.v, 0, 25362, f.set), h('span', { class: 'note' }, f.v ? 'measures' : 'AUTO')], '0 = AUTO (length of the first recorded phrase)'); })()
+        mSel('Overdubbing', 'MASTER', 'DubMode', L.dubMode, 'Overdub adds new playing on top. Replace records over what was there.'),
+        mSel('After recording', 'MASTER', 'RecAction', L.recAction, 'What pressing REC/PLAY at the end of a recording does: go straight on to overdubbing, or play back first.'),
+        (function () { var f = M('MASTER', 'RecQuantize'); return row('Quantize', sel(L.quantize, f.v ? 1 : 0, function (v) { f.set(v ? 2 : 0); }), 'Moves the start and end of a recording to the nearest measure when the rhythm or another synced track is running.'); })(),
+        mChk('Start recording when I play', 'MASTER', 'AutoRec', 'REC/PLAY waits, and recording starts when you start playing (AUTO REC).'),
+        (function () { var f = M('MASTER', 'AutoRecSens'); return row('…how loud', slider(f.v, 1, 100, f.set), 'How loud you must play before recording starts (higher = reacts to softer playing).'); })(),
+        mSel('…listening to', 'MASTER', 'AutoRecSrc', L.recSrc, 'Which input it listens to.'),
+        (function () { var f = M('MASTER', 'LpLen'); return row('Loop length', [num(f.v, 0, 25362, f.set), h('span', { class: 'note' }, f.v ? 'measures' : 'auto')], '0 = auto: the length of the first recording.'); })()
       ]),
       card('Play', [
         row('Tempo', [num(tempo.v, 400, 3000, tempo.set, 0.1, 10), h('span', { class: 'note' }, 'BPM'), h('button', { class: 'small', onclick: tapTempo, title: 'Tap repeatedly' }, 'Tap')]),
         mLvl('Memory level', 'MASTER', 'Level', 200),
-        mSel('Play mode', 'MASTER', 'PlayMode', L.playMode, 'MULTI plays both tracks together. SINGLE plays one track at a time.'),
-        mSel('Track change', 'MASTER', 'SinglPlayeChange', L.singleChange, 'In SINGLE play mode: switch to the other track at once, or when the loop ends.'),
-        mSel('Fade time', 'MASTER', 'FadeTime', L.fadeTime, 'Length of fade in/out for tracks set to start with FADE IN or stop with FADE OUT.'),
+        mSel('Tracks play', 'MASTER', 'PlayMode', L.playMode, 'Both tracks play together, or one at a time and you switch with TRACK SELECT.'),
+        mSel('Switch track', 'MASTER', 'SinglPlayeChange', L.singleChange, 'When playing one track at a time: switch to the other track at once, or when the loop ends.'),
+        mSel('Fade time', 'MASTER', 'FadeTime', L.fadeTime, 'How long fade in and fade out take, for tracks set to start or stop that way.'),
         mSel('MIDI start plays', 'MASTER', 'AllStart', L.allStart, 'Which tracks start when a MIDI Start message arrives.'),
-        mSel('Track chain', 'MASTER', 'TrackChain', L.trkChain, 'PARALLEL: both tracks go to the outputs. SERIES: track 1 is fed into track 2.')
+        mSel('Track chain', 'MASTER', 'TrackChain', L.trkChain, 'Parallel: both tracks play side by side. Series: track 1 is fed into track 2.')
       ]),
       card('Loop FX', [
-        mChk('Loop FX on', 'LOOPFX', 'Sw'),
-        mSel('Type', 'LOOPFX', 'FxType', L.fxType),
+        mChk('Loop FX on', 'LOOPFX', 'Sw', 'An effect that chops up, repeats or shifts the loop in time with the beat.'),
+        mSel('Effect', 'LOOPFX', 'FxType', L.fxType, 'Scatter chops the loop up, Repeat repeats a short part, Shift moves it in time, Vinyl flick sounds like a record being stopped.'),
         lenOpts ? (function () {
           var f = M('LOOPFX', lenKey);
-          return row({ scatter: 'Scatter length', repeat: 'Repeat length', shift: 'Shift' }[kind],
+          return row({ scatter: 'Chop length', repeat: 'Repeat length', shift: 'Shift by' }[kind],
             sel(lenOpts.map(function (o) { return [o.value, o.label]; }), f.v, f.set, function (v) { return !lenOpts.filter(function (o) { return o.value === v; })[0].enabled; }),
-            'Lengths that do not fit the rhythm beat are disabled');
-        })() : (function () { var f = M('LOOPFX', 'VinylFlickFlick'); return row('Flick', slider(f.v, 0, 100, f.set)); })()
+            'Lengths that don’t fit the beat are greyed out.');
+        })() : (function () { var f = M('LOOPFX', 'VinylFlickFlick'); return row('Flick amount', slider(f.v, 0, 100, f.set)); })()
       ]),
       card('Rhythm', [
-        row('Rhythm on', chk(rhythmOn, function (v) { mset('RHYTHM', 'State', v); render(); }), 'Recall this memory with the rhythm on (play standby)'),
+        row('Rhythm on', chk(rhythmOn, function (v) { mset('RHYTHM', 'State', v); render(); }), 'The rhythm is ready to play when you pick this memory.'),
         mLvl('Level', 'RHYTHM', 'Level', 200),
         (function () { var f = M('RHYTHM', 'Reverb'); return row('Reverb', slider(f.v, 0, 100, f.set)); })(),
-        row('Beat', sel(L.beat, beatIdx(), function (v) {
+        row('Time signature', sel(L.beat, beatIdx(), function (v) {
           begin(); var pat = P.patterns(beatIdx())[mget('RHYTHM', 'Pattern')];
           mset('RHYTHM', 'Beat', v);
           var np = P.patterns(v).indexOf(pat); mset('RHYTHM', 'Pattern', np < 0 ? 0 : np);
           commit(); render();
-        }), 'You cannot change the beat after a track is recorded'),
+        }), 'Can’t be changed after a track is recorded.'),
         mSel('Pattern', 'RHYTHM', 'Pattern', P.patterns(beatIdx())),
-        mSel('Variation', 'RHYTHM', 'Variation', L.variation),
-        mSel('Var. change', 'RHYTHM', 'VariationChange', L.varChange),
-        mSel('Kit', 'RHYTHM', 'Kit', L.kit),
-        mSel('Start', 'RHYTHM', 'Start', L.rhyStart),
-        mSel('Stop', 'RHYTHM', 'Stop', L.rhyStop),
-        mSel('Rec count-in', 'RHYTHM', 'RecCount', L.count),
-        mSel('Play count-in', 'RHYTHM', 'PlayCount', L.count),
-        mChk('Fill', 'RHYTHM', 'Fill'),
-        row('Parts', [1, 2, 3, 4].map(function (p) { var f = M('RHYTHM', 'Part' + p); return h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: !!f.v, onchange: function (e) { f.set(e.target.checked ? 1 : 0); } }), ' ' + p); })),
-        mSel('Tone low', 'RHYTHM', 'ToneLow', L.tone),
-        mSel('Tone high', 'RHYTHM', 'ToneHigh', L.tone)
+        mSel('Variation', 'RHYTHM', 'Variation', L.variation, 'Two versions of each pattern, A and B.'),
+        mSel('Switch variation', 'RHYTHM', 'VariationChange', L.varChange, 'When a change between A and B takes effect: at the next measure or when the loop ends.'),
+        mSel('Drum kit', 'RHYTHM', 'Kit', L.kit),
+        mSel('Rhythm starts', 'RHYTHM', 'Start', L.rhyStart, 'With the loop: when you start recording or playing. After recording: when the first recording ends. Before recording: the rhythm plays first, and recording starts on the next measure.'),
+        mSel('Rhythm stops', 'RHYTHM', 'Stop', L.rhyStop, 'Keeps playing until you stop it, stops with the loop, or stops when recording ends.'),
+        mSel('Count-in before recording', 'RHYTHM', 'RecCount', L.count),
+        mSel('Count-in before playing', 'RHYTHM', 'PlayCount', L.count),
+        mChk('Fill-ins', 'RHYTHM', 'Fill', 'Play a drum fill when the variation changes.'),
+        row('Drum parts', [1, 2, 3, 4].map(function (p) { var f = M('RHYTHM', 'Part' + p); return h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: !!f.v, onchange: function (e) { f.set(e.target.checked ? 1 : 0); } }), ' ' + p); })),
+        mSel('Bass', 'RHYTHM', 'ToneLow', L.tone),
+        mSel('Treble', 'RHYTHM', 'ToneHigh', L.tone)
       ]),
       card('Pedals & controllers', [
         ctlRow('REC/PLAY switch', 'Pedal1', L.pdlCtl),
@@ -447,16 +452,16 @@
         ctlRow('Footswitch CTL1', 'Ctl1', L.pdlCtl),
         ctlRow('Footswitch CTL2', 'Ctl2', L.pdlCtl),
         ctlRow('Expression pedal', 'Exp', L.exp),
-        h('p', { class: 'info' }, 'What each switch does in this memory. The pedal’s own short name is in [brackets].'),
+        h('p', { class: 'info' }, 'What each switch does in this memory.'),
         (function () {
           var any = ['Pdl1', 'Pdl2', 'Pdl3', 'Ctl1', 'Ctl2', 'Exp'].some(function (k) { return sget('PREF', k) === 1; });
-          return any ? h('p', { class: 'info warnnote' }, 'Switches marked “uses system” follow the same function in every memory. To use this memory’s choice, set them to MEMORY under ',
+          return any ? h('p', { class: 'info warnnote' }, 'Switches marked “uses system” follow the same function in every memory. To use this memory’s choice, set them to “Each memory” under ',
             h('a', { href: '#', onclick: function (e) { e.preventDefault(); go('system'); } }, 'System › Switch functions from'), '.') : null;
         })()
       ]),
       card('Assign 1–8', [h('p', { class: 'info' }, 'Extra controls: when something happens (a switch, a pedal, a MIDI CC…), change a function or setting.'),
         h('div', { class: 'assigns' }, assigns)], 'wide'),
-      card('All values (advanced)', rawEditor('mem', S.cur), 'wide raw')
+      card('Other stored values (advanced)', rawEditor('mem', S.cur), 'wide raw')
     )];
   }
 
@@ -473,8 +478,8 @@
     return h('div', { class: 'arow' + (on ? '' : ' off') },
       h('label', { class: 'anum' }, h('input', { type: 'checkbox', checked: !!on, onchange: function (e) { mset(sec, 'Sw', e.target.checked ? 1 : 0); render(); } }), ' ' + a),
       h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'When'), sel(RCNames.options(L.assignSource, 'source'), mget(sec, 'Source'), function (v) { mset(sec, 'Source', v); render(); }),
-        sel([[0, 'while held (MOMENT)'], [1, 'on/off per press (TOGGLE)']], mget(sec, 'SourceMode'), function (v) { mset(sec, 'SourceMode', v); render(); })),
-      h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'Does'), sel(RCNames.options(L.assignTarget), tgt, function (v) {
+        sel([[0, 'while held'], [1, 'on/off per press']], mget(sec, 'SourceMode'), function (v) { mset(sec, 'SourceMode', v); render(); })),
+      h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'Does'), sel(RCNames.options(L.assignTarget, 'target'), tgt, function (v) {
         begin(); mset(sec, 'Target', v);
         var r = P.targetRange(v, { beat: beatIdx(), fxType: mget('LOOPFX', 'FxType') });
         mset(sec, 'TargetMin', 0); mset(sec, 'TargetMax', r ? r.length - 1 : 1);
@@ -483,17 +488,48 @@
       rng ? h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'From'), mm('TargetMin'), h('span', { class: 'alabel' }, 'to'), mm('TargetMax')) : null);
   }
 
+  var RAW_SECTIONS = { TRACK1: 'Track 1', TRACK2: 'Track 2', MASTER: 'Record & play', LOOPFX: 'Loop FX', RHYTHM: 'Rhythm', CTL: 'Pedals & controllers',
+    SETUP: 'General', PREF: 'Switch functions from', MIDI: 'MIDI', INPUT: 'Input / output', USB: 'USB' };
+  var RAW_NAMES = { MeasMod: 'Loop length type', MeasLen: 'Loop length (measures)', MeasBtLp: 'Loop length (beats)', RecTmp: 'Recorded at tempo (×10)',
+    WavStat: 'Has a recording (1 = yes)', WavLen: 'Recording length (samples)', CurrentTrack: 'Selected track (0 = 1, 1 = 2)',
+    AllTrackSel: 'Both tracks selected', LpMod: 'Loop mode', TrkMod: 'Track mode', Sync: 'Sync',
+    ScatterLength: 'Scatter: chop length', RepeatLength: 'Repeat: length', ShiftShift: 'Shift: shift by', VinylFlickFlick: 'Vinyl flick: amount' };
+  /** Every number stored in the file. By default only the ones without a control elsewhere on the page. */
   function rawEditor(db, bi) {
     var b = (db === 'mem' ? S.mem : S.sys).blocks[bi];
-    var d = h('details', null, h('summary', null, 'Show every stored field as a number (for things the editor has no control for)'));
+    var orig = ((db === 'mem' ? S.origMem : S.origSys) || {}).blocks;
+    var ob = orig && orig[bi];
+    function origVal(sec, key) {
+      if (!ob) return undefined;
+      var os = ob.sections.filter(function (x) { return x.name === sec; })[0];
+      var of = os && os.fields.filter(function (x) { return x[0] === key; })[0];
+      return of ? of[1] : undefined;
+    }
+    var showAll = !!S.rawAll;
+    var d = h('details', { open: S.rawOpen ? '' : null, ontoggle: function (e) { S.rawOpen = e.target.open; } },
+      h('summary', null, 'Show the stored values'));
+    d.appendChild(h('div', { class: 'rawhelp' },
+      h('p', null, 'The pedal stores every setting as a number. Everything above is one of these numbers with a friendlier control. ',
+        'Here you can see the rest – settings the editor has no control for – and change them by typing a new number.'),
+      h('p', null, 'Only change a value if you know what it does (the BOSS RC-500 Parameter Guide lists them). Changed values are marked, and ↶ Undo works here too. Nothing reaches the pedal until you save.'),
+      h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: showAll, onchange: function (e) { S.rawAll = e.target.checked; render(); } }),
+        ' Also show the settings that already have a control above')));
+    var any = false;
     b.sections.forEach(function (s) {
-      if (s.name === 'NAME') return;
-      d.appendChild(h('div', { class: 'rawsec' }, h('h4', null, s.name), h('div', { class: 'rawgrid' }, s.fields.map(function (f) {
-        return h('label', null, h('span', null, f[0]), h('input', {
-          type: 'number', value: f[1], onchange: function (e) { setField(db, bi, s.name, f[0], parseInt(e.target.value, 10) || 0); render(); }
-        }));
-      }))));
+      if (s.name === 'NAME' || /^ASSIGN/.test(s.name) && !showAll) return;
+      var fields = s.fields.filter(function (f) { return showAll || !covered[db][s.name + '.' + f[0]]; });
+      if (!fields.length) return;
+      any = true;
+      d.appendChild(h('div', { class: 'rawsec' }, h('h4', null, (RAW_SECTIONS[s.name] || s.name.replace(/^ASSIGN/, 'Assign ')) + '  ', h('small', null, s.name)),
+        h('div', { class: 'rawgrid' }, fields.map(function (f) {
+          var label = covered[db][s.name + '.' + f[0]], was = origVal(s.name, f[0]), changed = was !== undefined && was !== f[1];
+          return h('label', { class: changed ? 'chg' : null, title: (typeof label === 'string' ? label + ' – ' : '') + s.name + ' › ' + f[0] + (changed ? ' (was ' + was + ')' : '') },
+            h('span', null, typeof label === 'string' ? label : RAW_NAMES[f[0]] || f[0]), h('input', {
+              type: 'number', value: f[1], onchange: function (e) { setField(db, bi, s.name, f[0], parseInt(e.target.value, 10) || 0); render(); }
+            }));
+        }))));
     });
+    if (!any) d.appendChild(h('p', { class: 'info' }, 'Every stored value has its own control above.'));
     return d;
   }
 
@@ -513,7 +549,7 @@
     for (var e = 1; e <= 5; e++) {
       (function (e) {
         var mn = Sy('SETUP', 'Extent' + e + 'Min'), mx = Sy('SETUP', 'Extent' + e + 'Max');
-        ext.push(row('EXT' + e, [sel(L.extVal, mn.v, mn.set), ' – ', sel(L.extVal, mx.v, mx.set)]));
+        ext.push(row('Range ' + e, [sel(L.extVal, mn.v, mn.set), ' – ', sel(L.extVal, mx.v, mx.set)]));
       })(e);
     }
     function sCtl(label, key, list) { var f = Sy('CTL', key); var r = row(label, sel(RCNames.options(list), f.v, f.set)); r.classList.add('stack'); return r; }
@@ -523,42 +559,42 @@
       card('General', [
         sSel('Display contrast', 'SETUP', 'Contrast', L.contrast),
         sSel('Display shows', 'SETUP', 'DisplayMode', L.dispMode, 'What the display shows while recording and playing.'),
-        sSel('Undo/redo', 'SETUP', 'UndoRedo', L.undoRedo, 'For switches with “hold: undo”: undo while still holding (HOLD) or when you let go (RELEASE).'),
+        sSel('Undo/redo', 'SETUP', 'UndoRedo', L.undoRedo, 'For switches with “hold: undo”: undo while you’re still holding the switch, or when you let go.'),
         sSel('Current memory', 'SETUP', 'MemoryNumber', P.range(1, 99, pad2), 'The memory the pedal had selected when its settings were last saved.')
       ]),
       card('Switch functions from', [
         sSel('REC/PLAY switch', 'PREF', 'Pdl1', L.pref), sSel('STOP switch', 'PREF', 'Pdl2', L.pref), sSel('TRACK SELECT switch', 'PREF', 'Pdl3', L.pref),
         sSel('Footswitch CTL1', 'PREF', 'Ctl1', L.pref), sSel('Footswitch CTL2', 'PREF', 'Ctl2', L.pref), sSel('Expression pedal', 'PREF', 'Exp', L.pref),
-        h('p', { class: 'info' }, 'MEMORY: each memory decides what the switch does (Memory page). SYSTEM: the same function in every memory (below).')
+        h('p', { class: 'info' }, 'Each memory: the switch does what the memory says (Memory page). System: the same function in every memory (below).')
       ]),
       card('Switch functions (system)', [
         sCtl('REC/PLAY switch', 'Pedal1', L.pdlCtl), sCtl('STOP switch', 'Pedal2', L.pdlCtl), sCtl('TRACK SELECT switch', 'Pedal3', L.pdlCtl),
         sCtl('Footswitch CTL1', 'Ctl1', L.pdlCtl), sCtl('Footswitch CTL2', 'Ctl2', L.pdlCtl), sCtl('Expression pedal', 'Exp', L.exp),
-        h('p', { class: 'info' }, 'Used in all memories for the switches set to SYSTEM under Preference.')
+        h('p', { class: 'info' }, 'Used in every memory for the switches set to “System” above.')
       ]),
       card('MIDI', [
         sSel('Receive channel', 'MIDI', 'RxCtlCh', L.ch16, 'MIDI channel the pedal listens on for memory changes and CC messages. The editor sends on this channel.'),
         sChk('Listen on all channels', 'MIDI', 'Omni', 'OMNI: react to messages on every MIDI channel.'),
         sSel('Drum notes channel', 'MIDI', 'RxNoteCh', L.ch16, 'MIDI notes on this channel play the RC-500’s drum sounds.'),
-        sSel('Send channel', 'MIDI', 'TxCh', L.txCh, 'Channel the pedal sends on. RX CTL = the same as the receive channel.'),
-        sSel('Follow tempo from', 'MIDI', 'Sync', L.syncClock, 'AUTO follows MIDI clock from the MIDI IN jack or USB when there is one (needed for the editor’s tempo), otherwise the memory tempo.'),
+        sSel('Send channel', 'MIDI', 'TxCh', L.txCh, 'Channel the pedal sends on.'),
+        sSel('Follow tempo from', 'MIDI', 'Sync', L.syncClock, 'Auto follows MIDI clock from the MIDI IN jack or USB when there is one (needed for the editor’s tempo), otherwise the memory tempo.'),
         sChk('Send MIDI clock', 'MIDI', 'ClkOut', 'Send the tempo as MIDI clock (the editor shows it in Direct mode).'),
         sSel('MIDI start starts', 'MIDI', 'SyncStart', L.syncStart, 'What starts when a MIDI Start message arrives.'),
         sChk('Send memory changes', 'MIDI', 'PcOut', 'Send a program change when you change memory (the editor follows the pedal with it).'),
         sSel('Pass on MIDI IN to', 'MIDI', 'MidiThru', L.thru, 'Where messages arriving at MIDI IN are passed on.'),
         sSel('Pass on USB MIDI to', 'MIDI', 'UsbThru', L.thru, 'Where MIDI messages arriving over USB are passed on.')
       ]),
-      card('Memory ranges (Extent)', [sSel('Active range', 'SETUP', 'ExtentCh', L.extent, 'MEMORY INC/DEC only step through the memories in the active range. Up to five ranges (EXT1–5).')].concat(ext)),
+      card('Memory ranges', [h('p', { class: 'info' }, 'Limits which memories a footswitch set to “Next memory” or “Previous memory” steps through – for example a set list in memories 10–15, so you don’t have to step past the others. You can keep five ranges and switch between them with a switch set to “Next memory range”. The pedal calls this EXTENT.'), sSel('Range in use', 'SETUP', 'ExtentCh', L.extent), h('p', { class: 'info' }, 'First and last memory of each range:')].concat(ext)),
       card('Input / output', [
         sChk('Phantom power', 'INPUT', 'Phantom', 'Power for condenser microphones on MIC IN.'),
         sSel('Mic goes to', 'INPUT', 'MicOut', L.micOut, 'Which outputs the live mic sound goes to.'),
         sSel('Instrument goes to', 'INPUT', 'InstOut', L.instOut, 'Which outputs the live instrument sound goes to.'),
-        sSel('Rhythm goes to', 'INPUT', 'RhythmOut', L.rhyOut, 'Which outputs the rhythm goes to. LOOP records drum notes from MIDI into a track.'),
+        sSel('Rhythm goes to', 'INPUT', 'RhythmOut', L.rhyOut, 'Which outputs the rhythm goes to. “Into the loop” records the rhythm into the tracks instead.'),
         (function () { var f = Sy('INPUT', 'MicNs'); return row('Mic noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the mic while recording.'); })(),
         (function () { var f = Sy('INPUT', 'InstNs'); return row('Instrument noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the instrument inputs while recording.'); })(),
         sSel('INPUT light shows', 'INPUT', 'Indicator', L.peak, 'Which signal the INPUT level light follows.')
       ]),
-      card('All values (advanced)', rawEditor('sys', 0), 'wide raw'))];
+      card('Other stored values (advanced)', rawEditor('sys', 0), 'wide raw'))];
   }
 
   // ------------------------------------------------------------------ loops (WAV)
@@ -787,32 +823,34 @@
         ? h('button', { onclick: function () { S.midi.disconnect(); render(); } }, 'Disconnect')
         : h('button', { class: 'primary', onclick: connectMidi }, 'Connect over USB MIDI'))),
     !S.midi.available() ? h('p', { class: 'warn' }, 'This browser has no Web MIDI. Use Firefox or Chrome/Edge on an https page, or the Android app.') : null,
+    h('p', { class: 'info lead' }, 'Lower-level control of the pedal over USB MIDI. To play the pedal, ', h('a', { href: '#', onclick: function (e) { e.preventDefault(); go('direct'); } }, 'Direct'),
+      ' is easier. Here you can switch the USB drive on and off, change memory, start and stop, try the MIDI controls a memory listens to, and see every message going to and from the pedal.'),
     h('div', { class: 'grid' },
       card('Storage mode (USB drive)', [
-        h('p', { class: 'info' }, 'Switches the pedal’s USB port to a drive so the editor can read and write its memories and loops — like MENU › STORAGE on the pedal. Playback must be stopped.'),
+        h('p', { class: 'info' }, 'Turns the pedal’s USB port into a drive so its memories and loops can be read and written – like MENU › STORAGE on the pedal. Load from pedal and Save to pedal do this for you. The pedal must be stopped.'),
         h('div', { class: 'btnrow' },
           h('button', { class: 'primary', disabled: !S.midi.available(), onclick: function () { storageMode(true); } }, 'Enter storage mode'),
           h('button', { disabled: !S.midi.available(), onclick: function () { storageMode(false); } }, 'Leave storage mode'))
       ]),
-      card('Memory & transport', [
-        row('Channel', sel(L.ch16, ch, function (v) { sset('MIDI', 'RxCtlCh', v); render(); }), 'The pedal’s RX CTL CH (SYSTEM › MIDI)'),
+      card('Memory, start and stop', [
+        row('Channel', sel(L.ch16, ch, function (v) { sset('MIDI', 'RxCtlCh', v); render(); }), 'The channel the pedal listens on (System › MIDI › Receive channel).'),
         row('Memory', [h('button', { class: 'small', disabled: !connected, onclick: function () { selectMemory(Math.max(0, S.cur - 1)); midiSend([0xC0 | ch, S.cur]); } }, '◀'),
           h('span', { class: 'big2' }, pad2(S.cur + 1)),
           h('button', { class: 'small', disabled: !connected, onclick: function () { selectMemory(Math.min(98, S.cur + 1)); midiSend([0xC0 | ch, S.cur]); } }, '▶'),
-          h('button', { disabled: !connected, onclick: function () { midiSend([0xC0 | ch, S.cur]); } }, 'Send PC')]),
-        row('Follow pedal', chk(S.followPedal, function (v) { S.followPedal = !!v; }), 'Select the memory the pedal switches to (needs PC OUT on)'),
-        row('Send on select', chk(S.sendPcOnSelect, function (v) { S.sendPcOnSelect = !!v; }), 'Send a program change when you pick a memory in the list'),
+          h('button', { disabled: !connected, onclick: function () { midiSend([0xC0 | ch, S.cur]); } }, 'Select on the pedal')]),
+        row('Follow the pedal', chk(S.followPedal, function (v) { S.followPedal = !!v; }), 'When you change memory on the pedal, the editor shows the same memory (needs System › MIDI › Send memory changes).'),
+        row('Change memory on the pedal', chk(S.sendPcOnSelect, function (v) { S.sendPcOnSelect = !!v; }), 'When you pick a memory in the editor, the pedal switches to it too.'),
         h('div', { class: 'btnrow' },
           h('button', { class: 'transport', disabled: !connected, onclick: function () { midiSend([0xFA]); } }, '▶ Start'),
           h('button', { class: 'transport', disabled: !connected, onclick: function () { midiSend([0xFC]); } }, '■ Stop')),
-        h('p', { class: 'info' }, 'MIDI Start plays all tracks (ALL START / SYNC START settings). Program changes 1–99 select memories.')
+        h('p', { class: 'info' }, 'Start plays the tracks (which ones is set under Memory › MIDI start plays and System › MIDI start starts). Stop stops everything.')
       ]),
-      card('Assigned CC controls (memory ' + (S.cur + 1) + ')', ccRows.length ? ccRows : h('p', { class: 'info' }, 'No ASSIGN in this memory uses a CC# source. Set an assign’s source to CC#1–31 or CC#64–95 to control it from here.')),
-      card('Send any CC', [
+      card('MIDI controls in memory ' + (S.cur + 1), [h('p', { class: 'info' }, 'The pedal reacts to a MIDI CC only if one of the memory’s Assign slots listens for it. These are the ones this memory has – press a button or move its slider to try it.')].concat(ccRows.length ? ccRows : [h('p', { class: 'info' }, 'This memory has none yet. Set an Assign’s “When” to a MIDI CC (or use Set up memories… for Direct mode).')])),
+      card('Send any MIDI CC', [h('p', { class: 'info' }, 'For testing: send a CC number of your choice.'),
         row('CC#', num(genCc.n, 0, 127, function (v) { S.genCc = v; render(); })),
         ccPad(genCc.n, 'CC#' + genCc.n, 0)
       ]),
-      card('MIDI monitor', [h('div', { class: 'btnrow' },
+      card('MIDI messages', [h('p', { class: 'info' }, 'Everything sent to (→) and received from (←) the pedal. Useful when something doesn’t work: press Copy and send me the text.'), h('div', { class: 'btnrow' },
         h('button', { class: 'small', onclick: function () { markNo++; logMidi('mark', null, '──── mark ' + markNo + ' ────'); }, title: 'Add a divider, to see which messages belong to which press' }, '＋ Mark'),
         h('button', { class: 'small', onclick: function () { S.midiLog = []; markNo = 0; lastLog = 0; renderMidiLog(); } }, 'Clear'),
         h('button', { class: 'small', onclick: function () {
@@ -927,7 +965,7 @@
         h('li', null, 'Secure page (needed for both): ', window.isSecureContext ? '✅' : '❌ open the https version')),
       h('h3', null, 'Good to know'),
       h('ul', null,
-        h('li', null, 'Tap ⓘ next to a setting for an explanation. Pedal functions show plain names, with the pedal’s own short name in [brackets].'),
+        h('li', null, 'Tap ⓘ next to a setting for an explanation. Pedal functions and settings are described in plain words.'),
         h('li', null, 'The editor never deletes the pedal’s files: it writes the older of the two copies the RC-500 keeps (MEMORY1/2.RC0, SYSTEM1/2.RC0) with a newer save counter, so the previous version stays as a fallback. It warns if the pedal has newer changes than the ones you loaded.'),
         h('li', null, 'Imported audio is converted to 44.1 kHz 32-bit float stereo WAV, which the RC-500 reads directly.')),
       h('h3', null, 'Credits & licence'),
