@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.23';
+  var VERSION = '2.24';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -642,7 +642,8 @@
       if (S.midi.connected) { midiSend([0xFC]); await PF.sleep(400); }      // stop everything first
       var view = await getDrive(b);
       if (!view.hasWave) throw new Error('No ROLAND/WAVE folder on this drive.');
-      S.loopStore = view; S.loops = null;
+      if (!S.store && !anyDirty()) { b.set('Reading the memories…'); await loadFrom(view); }
+      S.loopStore = view; S.loops = null; S.loopDriveGone = false;
       b.close();
     } catch (e) { b.close(); if (e.name !== 'AbortError' && e.message !== 'Cancelled') errToast(e); }
     finally { S.loopBusy = false; render(); }
@@ -843,6 +844,9 @@
       toast('Connected to ' + S.midi.name);
       afterConnect();
       if (!S.midi.sysexOk) toast('SysEx was not allowed: storage mode switching is unavailable', 'err');
+      // First connection with nothing read yet: read the memories from the pedal right away.
+      // (The Loops tab opens the drive itself and reads them from there.)
+      else if (!S.store && !anyDirty() && PF.Storage.canWriteDirect && S.page !== 'loops') setTimeout(loadFromPedal, 300);
     } catch (e) { errToast(e); }
     finally { connecting = false; }
     render();
