@@ -222,9 +222,9 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
   .actions .lb { display: none; }
   .actions .ic { display: inline; font-size: 17px; line-height: 1; }
   /* the tab bar is the last part of the page layout (not fixed), so it sits right at the bottom in every browser */
-  nav.tabs { order: 10; flex: none; z-index: 30; padding: 0 0 min(env(safe-area-inset-bottom, 0px), 24px); border-top: 1px solid var(--line); border-bottom: 0;
+  nav.tabs { order: 10; flex: none; z-index: 30; padding: 0; border-top: 1px solid var(--line); border-bottom: 0;
     justify-content: space-around; box-shadow: 0 -4px 14px rgba(0,0,0,.18); overflow: visible; }
-  nav.tabs button { flex: 1; flex-direction: column; gap: 1px; padding: 7px 2px 8px; font-size: 11.5px; border-bottom: 0; border-top: 3px solid transparent; }
+  nav.tabs button { flex: 1; flex-direction: column; gap: 0; padding: 5px 2px 4px; font-size: 11.5px; line-height: 1.2; border-bottom: 0; border-top: 3px solid transparent; }
   nav.tabs button .ti { display: block; font-size: 18px; line-height: 1.1; }
   nav.tabs button.on { border-top-color: var(--accent); color: var(--accent); }
   aside.side { position: fixed; inset: 0; z-index: 45; width: auto; border: 0; transform: translateY(100%); transition: transform .2s; padding-top: env(safe-area-inset-top); }
