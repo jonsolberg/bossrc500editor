@@ -23,12 +23,18 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   <img src="docs/phone-memory.webp" width="220" alt="Editing on a phone">
 </p>
 
-> ⚠️ Not affiliated with BOSS/Roland. Make a backup (⋯ › Backup of the pedal’s data) before you save to the pedal.
+> ⚠️ **Experimental – being tested on a real pedal.** Make a backup (⋯ › Backup of the pedal’s data) before you
+> save to the pedal. Not affiliated with BOSS/Roland.
 
 ## Features
 
+- **Start page** that walks you through connecting, loading, editing and saving, and shows where you are
+- **Automatic**: connects over USB MIDI by itself, remembers the pedal's drive, switches storage mode on and off
+  for *Load from pedal* / *Save to pedal*, checks what it wrote and warns if the pedal has newer changes
+- **Plain names**: pedal functions and settings are described in plain words (the pedal's own short name in
+  [brackets]), with an ⓘ explanation next to most settings
 - **Direct mode**: play the pedal live from an on-screen copy of its panel — REC/PLAY, STOP and TRACK SELECT
-  footswitches (hold REC/PLAY to undo, hold STOP to clear), TRACK 1/2 level sliders with status lights, the colour
+  footswitches (hold REC/PLAY to undo, hold STOP for 2 s to clear), TRACK 1/2 level sliders with status lights, the colour
   display, rhythm ON/OFF, TEMPO (tap or type a tempo; sent as MIDI clock), LOOP FX and the MEMORY/VALUE knob. Keyboard shortcuts on a computer
   (Space, S, T, R, F, ↑/↓). The RC-500 only reacts to MIDI CC through a memory's ASSIGNs, so *Set up memories*
   adds the needed ASSIGNs (CC#80–89, see below) to the memories you choose; then save them to the pedal
@@ -47,7 +53,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   ASSIGNs (momentary/toggle + sliders), send any CC, MIDI monitor, follow the pedal's memory changes
 - **Storage mode from the app**: the same SysEx that BOSS TONE STUDIO for RC sends turns the pedal's USB drive on/off,
   so you don't have to go through MENU › STORAGE on the pedal
-- Backup of `ROLAND/DATA` as a ZIP; light/dark theme
+- Backup of `ROLAND/DATA` as a ZIP; light/dark theme; works on a phone (bottom tabs, memory picker)
 
 ## How it works
 
@@ -61,7 +67,7 @@ byte identical.
 | | Read pedal | Write pedal | USB MIDI |
 |---|---|---|---|
 | Chrome / Edge / Opera (desktop, https) | ✅ | ✅ directly | ✅ |
-| Firefox (https) | ✅ (folder upload) | downloads the changed files to copy into `ROLAND/DATA` | ✅ (asks for permission) |
+| Firefox (https) | ✅ (pick the folder each time) | downloads the changed files to copy into `ROLAND/DATA` | ✅ (asks for permission) |
 | Android app | ✅ | ✅ directly | ✅ |
 
 Web MIDI and direct writing only work on secure (https) pages, so use the GitHub Pages link above.
@@ -90,11 +96,23 @@ but they can't follow the pedal's own sliders: the RC-500 doesn't send those ove
 
 ### Using it
 
-1. Connect the RC-500 with a USB cable that carries data (on a phone: USB-C/OTG).
-2. **Remote › Enter storage mode** (or MENU › STORAGE › CONNECT on the pedal).
-3. **Open pedal** and pick the `BOSS RC-500` drive or its `ROLAND` folder.
-4. Edit, then **Save**.
-5. Eject the drive (desktop) and **Leave storage mode** — the pedal reloads its memories.
+1. Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO – that jack is its power switch) and
+   connect it with a USB cable that carries data (on a phone: USB-C/OTG).
+2. Open the editor. It connects over USB MIDI by itself (the first time, allow MIDI/SysEx in the browser).
+3. **⤓ Load from pedal** – the editor puts the pedal in storage mode and reads its memories. The first time you
+   pick the `BOSS RC-500` drive (or its `ROLAND` folder); after that it's remembered (not in Firefox). If storage
+   mode doesn't start, use MENU › STORAGE › CONNECTING on the pedal. The pedal must be stopped.
+4. Edit, then **⤒ Save to pedal**. The files are written and checked, and the pedal leaves storage mode and reloads
+   its memories. (In Firefox, copy the downloaded files into `ROLAND/DATA`, eject the drive and leave storage
+   mode on the pedal.)
+5. For Direct mode: **Set up memories…** on the Start or Direct page, then save to the pedal.
+
+### Tested so far
+
+On a real RC-500: USB MIDI in both directions (program change, start/stop, the pedal's status messages), reading
+the memories and loops, playing and exporting a loop, backup, writing memory changes (name and tempo checked on the
+pedal) and saving Direct mode ASSIGNs. Still being tested: playing the pedal from Direct mode and storage mode
+started from the editor in every browser.
 
 ## Building
 

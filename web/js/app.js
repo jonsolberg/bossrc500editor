@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.3';
+  var VERSION = '2.4';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -907,24 +907,28 @@
     return h('div', { class: 'about' },
       h('h2', null, 'BOSS RC-500 Editor ' + VERSION),
       h('p', null, 'Edit every memory and system setting of the BOSS RC-500 Loop Station, manage its recorded loops and control it live — all through the pedal’s USB port.'),
-      h('h3', null, 'Direct mode'),
-      h('p', null, 'Play the pedal from its on-screen panel. The RC-500 only listens to MIDI CC through a memory’s ASSIGNs, so first use “Set up memories…” on the Direct page and save. It uses CC#80–89 on the pedal’s RX CTL channel.'),
-      h('h3', null, 'How to connect'),
+      h('p', { class: 'warnnote' }, 'Experimental: being tested on a real pedal. Make a backup before you save (⋯ › Backup of the pedal’s data).'),
+      h('h3', null, 'Getting started'),
       h('ol', null,
-        h('li', null, 'Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO — that jack is its power switch) and connect it with a USB cable that carries data.'),
-        h('li', null, 'Go to ', h('b', null, 'Remote'), ' and press ', h('b', null, 'Enter storage mode'), ' — or on the pedal: MENU › STORAGE › CONNECT.'),
-        h('li', null, 'Press ', h('b', null, 'Open pedal'), ' and choose the BOSS RC-500 drive (or its ROLAND folder).'),
-        h('li', null, 'Edit, then ', h('b', null, 'Save'), '. ' + (fsa || PF.isAndroid ? 'The files are written straight to the pedal.' : 'Your browser downloads the changed files — copy them into ROLAND/DATA on the drive.')),
-        h('li', null, 'Eject the drive and press ', h('b', null, 'Leave storage mode'), ' (or exit STORAGE on the pedal). The pedal reloads its memories.')),
+        h('li', null, 'Power the RC-500 (adapter or batteries, with a cable in OUTPUT A/MONO — that jack is its power switch) and connect it with a USB cable that carries data (on a phone: USB-C/OTG).'),
+        h('li', null, 'The editor connects over USB MIDI by itself. The first time, the browser asks for permission (allow MIDI/SysEx).'),
+        h('li', null, 'Press ', h('b', null, '⤓ Load from pedal'), '. The editor switches the pedal to storage mode, reads its memories and remembers the drive. The first time you pick the BOSS RC-500 drive (or its ROLAND folder)', (fsa || PF.isAndroid ? '' : ' — in this browser you pick it each time'), '. If storage mode doesn’t start, use MENU › STORAGE › CONNECTING on the pedal. The pedal must be stopped.'),
+        h('li', null, 'Edit, then press ', h('b', null, '⤒ Save to pedal'), '. ' + (fsa || PF.isAndroid
+          ? 'The files are written straight to the pedal and checked, and the pedal is switched back so it reloads its memories.'
+          : 'Your browser downloads the changed files — copy them into ROLAND/DATA on the drive, eject it and leave storage mode on the pedal.'))),
+      h('p', null, 'The Start page shows where you are in these steps.'),
+      h('h3', null, 'Direct mode'),
+      h('p', null, 'Play the pedal from its on-screen panel. Hold REC/PLAY to undo and STOP (2 s) to clear. The RC-500 only listens to MIDI CC through a memory’s ASSIGNs, so first use “Set up memories…” and save to the pedal. It uses CC#80–89 on the pedal’s RX CTL channel. Tempo is sent as MIDI clock and needs no setup.'),
+      h('p', null, 'The pedal reports which tracks have a phrase and when playback starts and stops; the other lights follow your presses (↺ Lights resets them). The on-screen sliders set the track levels but can’t follow the pedal’s own sliders, which the RC-500 doesn’t send over USB.'),
       h('h3', null, 'Your browser'),
       h('ul', null,
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
-        h('li', null, 'USB MIDI (remote + storage mode): ', navigator.requestMIDIAccess || PF.isAndroid ? '✅' : '❌'),
+        h('li', null, 'USB MIDI (Direct, Remote, automatic storage mode): ', navigator.requestMIDIAccess || PF.isAndroid ? '✅' : '❌'),
         h('li', null, 'Secure page (needed for both): ', window.isSecureContext ? '✅' : '❌ open the https version')),
       h('h3', null, 'Good to know'),
       h('ul', null,
-        h('li', null, 'Make a backup first (⬇ Backup). The editor never deletes the pedal’s files; it writes the older of the two copies the RC-500 keeps (MEMORY1/2.RC0, SYSTEM1/2.RC0) with a newer save counter.'),
-        h('li', null, 'The pedal loads the newest copy when it leaves storage mode.'),
+        h('li', null, 'Tap ⓘ next to a setting for an explanation. Pedal functions show plain names, with the pedal’s own short name in [brackets].'),
+        h('li', null, 'The editor never deletes the pedal’s files: it writes the older of the two copies the RC-500 keeps (MEMORY1/2.RC0, SYSTEM1/2.RC0) with a newer save counter, so the previous version stays as a fallback. It warns if the pedal has newer changes than the ones you loaded.'),
         h('li', null, 'Imported audio is converted to 44.1 kHz 32-bit float stereo WAV, which the RC-500 reads directly.')),
       h('h3', null, 'Credits & licence'),
       h('p', null, 'By Jon Solberg. Free software under the GNU GPL v3 or later. ',
