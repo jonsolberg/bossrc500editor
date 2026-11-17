@@ -3,12 +3,12 @@
 An editor for the **BOSS RC-500 Loop Station** that talks to the pedal through its own USB port —
 no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app.
 
+> ⚠️ **Experimental – being tested on a real pedal.** Make a backup (⋯ › Back up the pedal’s data) before you
+> save to the pedal. Not affiliated with BOSS/Roland.
+
 **[Open the web version](https://jonsolberg.github.io/bossrc500editor/)** ·
 **[Download the Android APK](https://github.com/jonsolberg/bossrc500editor/releases/latest/download/RC500Editor.apk)** ·
 [all releases](https://github.com/jonsolberg/bossrc500editor/releases)
-
-> ⚠️ **Experimental – being tested on a real pedal.** Make a backup (⋯ › Back up the pedal’s data) before you
-> save to the pedal. Not affiliated with BOSS/Roland.
 
 <p align="center">
   <img src="docs/direct.webp" width="760" alt="Direct mode: the RC-500 panel on screen">
