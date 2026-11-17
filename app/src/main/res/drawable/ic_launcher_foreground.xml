@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Loop arrow around the two track sliders. GPL v3. -->
+<!-- Chrome footswitch ring with a red loop arc and a red LED. GPL v3. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="64" android:viewportHeight="64">
-    <group android:scaleX="0.88" android:scaleY="0.88" android:pivotX="32" android:pivotY="32">
-        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="4.6" android:strokeLineCap="round" android:fillColor="#00000000"
-            android:pathData="M40.45,16.11A18,18 0,1 1,23.55 16.11" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M29.29,13.06L20.97,11.25L26.13,20.96Z" />
-        <path android:strokeColor="#FF2A0607" android:strokeWidth="2.2" android:strokeLineCap="round" android:fillColor="#00000000"
-            android:pathData="M27,23v18M37,23v18" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M24.7,26h4.6a1.2,1.2 0,0 1,1.2 1.2v2a1.2,1.2 0,0 1,-1.2 1.2h-4.6a1.2,1.2 0,0 1,-1.2 -1.2v-2a1.2,1.2 0,0 1,1.2 -1.2z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M34.7,33h4.6a1.2,1.2 0,0 1,1.2 1.2v2a1.2,1.2 0,0 1,-1.2 1.2h-4.6a1.2,1.2 0,0 1,-1.2 -1.2v-2a1.2,1.2 0,0 1,1.2 -1.2z" />
+    <group android:scaleX="0.74" android:scaleY="0.74" android:pivotX="32" android:pivotY="32">
+        <path android:strokeWidth="5" android:fillColor="#00000000"
+            android:pathData="M32,13a19,19 0,1 1,0 38a19,19 0,1 1,0 -38z">
+            <aapt:attr name="android:strokeColor">
+                <gradient android:type="linear" android:startX="13" android:startY="13" android:endX="51" android:endY="51">
+                    <item android:offset="0" android:color="#FFFFFFFF" />
+                    <item android:offset="0.5" android:color="#FF9AA0A8" />
+                    <item android:offset="1" android:color="#FFE6E8EB" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:strokeColor="#FFE3262C" android:strokeWidth="7" android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M32,13a19,19 0,0 1,19 19" />
+        <path android:pathData="M32,24.5a7.5,7.5 0,1 1,0 15a7.5,7.5 0,1 1,0 -15z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="29.2" android:centerY="29.4" android:gradientRadius="10.5">
+                    <item android:offset="0" android:color="#FFFF8A8A" />
+                    <item android:offset="0.5" android:color="#FFE3262C" />
+                    <item android:offset="1" android:color="#FF8E0D12" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:fillColor="#B3FFFFFF" android:pathData="M29.6,27.8a1.8,1.8 0,1 1,0 3.6a1.8,1.8 0,1 1,0 -3.6z" />
     </group>
 </vector>
