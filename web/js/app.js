@@ -1177,8 +1177,7 @@
       if (v >= 0) { S.storage = v === 1; if (S.storage) S.driveWritten = true; /* unknown history: play safe */ refreshChrome(); if (S.page === 'start') render(); }
       if (autoLoad && !S.store) {
         S.autoLoaded = true;
-        if (!PF.isAndroid) loadFromPedal();
-        else if (!pedalSaysNoDrive()) PF.Storage.openRemembered(false).then(function (v) { return v && v.list('DATA').then(function (l) { if (l.length) return loadFrom(v).then(function () { render(); }); }); }).catch(function () { });
+        loadFromPedal();
       }
     });
     refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote' || S.page === 'loops') render();
