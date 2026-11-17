@@ -243,25 +243,32 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 }
 
 /* ------------------------------------------------------------------ Direct mode: the RC-500 panel */
-.rcwrap { width: 100%; max-width: 1110px; margin: 40px 0 10px; }
+.rcwrap { width: 100%; max-width: 1110px; margin: 0 0 10px; box-sizing: border-box; }
 .rcpanel {
   position: relative; width: 920px; height: 714px; transform-origin: top left; user-select: none; -webkit-user-select: none;
   border-radius: 18px; color: #fff; font-family: "Helvetica Neue", Arial, sans-serif;
   background:
     radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.14), transparent 55%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, transparent 421px, rgba(0,0,0,.1) 421px, rgba(0,0,0,.2) 100%),
     linear-gradient(180deg, #d7262c 0%, #c71f26 50%, #b81a21 100%);
   box-shadow: inset 0 2px 0 rgba(255,255,255,.3), inset 0 -4px 0 rgba(0,0,0,.25), inset 2px 0 0 rgba(255,255,255,.12), 0 14px 34px rgba(0,0,0,.4);
 }
 .rcpanel > * { position: absolute; transform: translate(-50%, -50%); }
 .jack { width: 44px; height: 22px; border-radius: 4px 4px 0 0; background: linear-gradient(90deg, #8d9095, #e6e8eb 45%, #9a9da2); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); z-index: -1; }
+.jack.mini { width: 22px; height: 12px; border-radius: 3px 3px 0 0; }
+.xlr { width: 76px; height: 6px; border-radius: 1px; background: #0c0c0d; box-shadow: 0 0 0 1px #55585e; z-index: -1; }
+.jlabel { font-size: 14px; font-weight: 600; letter-spacing: .3px; color: var(--muted); white-space: nowrap; font-family: system-ui, sans-serif; }
+.jlabel.grp { font-size: 15px; font-weight: 700; color: var(--text); }
 .logo { transform: translate(-100%, -50%) !important; display: flex; align-items: baseline; gap: 14px; font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; white-space: nowrap; }
 .logo .ls { font-size: 17px; letter-spacing: .5px; }
 .logo .mdl { font-size: 33px; letter-spacing: 1px; }
 .plabel { font-size: 15px; font-weight: 700; letter-spacing: .2px; white-space: pre; text-align: center; line-height: 1.1; text-shadow: 0 1px 0 rgba(0,0,0,.18); }
-.vline { width: 2px; height: 310px; background: rgba(0,0,0,.18); box-shadow: 1px 0 0 rgba(255,255,255,.2); }
+.vline { width: 2px; height: 310px; background: #fff; }
 .hline { width: 120px; height: 2px; background: #fff; }
-.seam { width: 920px; height: 3px; background: rgba(0,0,0,.25); box-shadow: 0 1px 0 rgba(255,255,255,.25), 0 -1px 0 rgba(255,255,255,.08); }
+.seam { width: 920px; height: 2px; background: rgba(255,255,255,.35); z-index: 1; }
+/* The upper deck is flat; the stomp section below the bevel slopes away, so it gets the shadow and less light. */
+.seamshade { width: 920px; height: 20px; background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,0)); pointer-events: none; }
 
 .led { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #5b1013; box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
 .led.sm { width: 13px; height: 13px; } .led.xs { width: 11px; height: 11px; }
@@ -281,6 +288,7 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .vgroove { position: absolute; left: 50%; top: 0; bottom: 0; width: 8px; transform: translateX(-50%); border-radius: 2px; background: #0e0e10; box-shadow: inset 0 1px 3px #000; }
 .vticks { position: absolute; inset: 6px -6px; display: flex; flex-direction: column; justify-content: space-between; }
 .vticks i { display: block; height: 2px; background: linear-gradient(90deg, #fff 0 12px, transparent 12px calc(100% - 12px), #fff calc(100% - 12px)); }
+.vticks i.s { height: 1px; margin: 0 6px; background: linear-gradient(90deg, #fff 0 6px, transparent 6px calc(100% - 6px), #fff calc(100% - 6px)); }
 .vthumb { position: absolute; left: 50%; width: 30px; margin-left: -15px; height: 30px; border-radius: 3px;
   background: repeating-linear-gradient(180deg, #2a2b2e 0 4px, #18191b 4px 6px); box-shadow: 0 3px 5px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18); }
 .vthumb::after { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 3px; background: #e9eaec; }
@@ -397,7 +405,7 @@ select.dim { opacity: .55; }
   background: rgba(10, 12, 16, .85); color: #fff; font-weight: 600; font-size: 15px; white-space: nowrap; pointer-events: none; }
 
 .helpdl dt { font-weight: 700; margin-top: 10px; }
-.helpdl dd { margin: 2px 0 0 0; color: var(--muted); }
+.helpdl dd { margin: 2px 0 0 0; color: var(--text); }
 
 /* connection light: a USB plug, green when the pedal is connected */
 .status .plug, .statuspop .plug { display: inline-flex; color: #8a9099; flex: none; }

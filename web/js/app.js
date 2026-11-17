@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.18';
+  var VERSION = '2.19';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -276,7 +276,14 @@
     popMenu($('btnMore'), items);
   }
   // The open tab is kept only for this visit (a reload stays put); a new visit always starts on Start.
-  function go(p) { S.page = p; try { sessionStorage.setItem('rc500-page', p); } catch (e) { } render(); window.scrollTo(0, 0); }
+  function go(p) {
+    S.page = p; try { sessionStorage.setItem('rc500-page', p); } catch (e) { }
+    if (p === 'loops') {
+      S.loopTried = false;                        // the Loops tab opens the pedal's drive by itself, once per visit
+      if (LS() && LS().hasWave) driveReachable(LS()).then(function (ok) { if (!ok && S.page === 'loops') { S.loopDriveGone = true; render(); } });
+    }
+    render(); window.scrollTo(0, 0);
+  }
 
   /** A dialog that shows progress text; returns {set, close}. */
   function busy(text) {
@@ -617,19 +624,48 @@
 
   // ------------------------------------------------------------------ loops (WAV)
   function loopDir(i, t) { return 'WAVE/' + pad3(i + 1) + '_' + t; }
+  // ------------------------------------------------------------------ loops: on the pedal's drive
+  /** The drive the loops are read from: the one opened for the loops, else the one the memories came from. */
+  function LS() { return S.loopStore || S.store; }
+  async function driveReachable(view) { try { return !!view && (await view.list('DATA')).length > 0; } catch (e) { return false; } }
+
+  /**
+   * The loops live on the pedal's USB drive, so it has to be in storage mode. Stop the pedal, switch it to
+   * storage mode and open the (remembered) drive – used when the Loops tab opens.
+   */
+  async function openLoopDrive() {
+    if (S.loopBusy) return;
+    if (LS() && LS().hasWave && await driveReachable(LS())) { if (!S.loops) { S.loops = null; render(); } return; }
+    S.loopBusy = true;
+    var b = busy('Stopping the pedal…');
+    try {
+      if (S.midi.connected) { midiSend([0xFC]); await PF.sleep(400); }      // stop everything first
+      var view = await getDrive(b);
+      if (!view.hasWave) throw new Error('No ROLAND/WAVE folder on this drive.');
+      S.loopStore = view; S.loops = null;
+      b.close();
+    } catch (e) { b.close(); if (e.name !== 'AbortError' && e.message !== 'Cancelled') errToast(e); }
+    finally { S.loopBusy = false; render(); }
+  }
+
+  async function openLoopFolder() {
+    try { var v = PF.Storage.canWriteDirect ? await PF.Storage.pick() : await pickViaInput(); S.loopStore = v; S.loops = null; S.loopDriveGone = false; render(); }
+    catch (e) { if (e.name !== 'AbortError' && e.message !== 'Cancelled') errToast(e); }
+  }
+
   async function scanLoops() {
-    if (!S.store || !S.store.hasWave) { S.loops = null; return; }
+    if (!LS() || !LS().hasWave) { S.loops = null; return; }
     var loops = {};
-    var dirs = await S.store.list('WAVE');
+    var dirs = await LS().list('WAVE');
     var names = {}; dirs.forEach(function (d) { if (d.dir) names[d.name] = 1; });
     for (var i = 0; i < 99; i++) {
       loops[i] = {};
       for (var t = 1; t <= 2; t++) {
         var dn = pad3(i + 1) + '_' + t;
         if (!names[dn]) continue;
-        var files = (await S.store.list('WAVE/' + dn)).filter(function (f) { return !f.dir && /\.wav$/i.test(f.name) && f.name[0] !== '.'; });
+        var files = (await LS().list('WAVE/' + dn)).filter(function (f) { return !f.dir && /\.wav$/i.test(f.name) && f.name[0] !== '.'; });
         if (files.length) {
-          var size = await S.store.size('WAVE/' + dn + '/' + files[0].name);
+          var size = await LS().size('WAVE/' + dn + '/' + files[0].name);
           loops[i][t] = { name: files[0].name, size: size };
         }
       }
@@ -640,10 +676,16 @@
   function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' kB'; }
 
   function pageLoops() {
-    if (!S.store || !S.store.hasWave) {
+    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect;
+    if (!LS() || !LS().hasWave || S.loopDriveGone) {
+      if (auto && !S.loopTried) { S.loopTried = true; S.loopDriveGone = false; setTimeout(openLoopDrive, 0); }
       return h('div', { class: 'empty' }, h('h2', null, 'Loops'),
-        h('p', null, 'Open the pedal drive (or its ROLAND folder) to see, play, export and import the recorded phrases.'),
-        h('p', null, h('button', { class: 'primary', onclick: openFolder }, 'Open pedal folder…')));
+        h('p', null, 'The recorded loops are on the pedal’s USB drive. To read them, the pedal stops and switches to storage mode – it can’t play while you work here.'),
+        h('p', null, 'When you are done, eject the drive and choose Leave storage mode (Start page, Direct or the MIDI page) so the pedal can play again.'),
+        h('p', null,
+          auto ? h('button', { class: 'primary', disabled: !!S.loopBusy, onclick: function () { S.loopDriveGone = false; openLoopDrive(); } }, 'Read the loops from the pedal') : null, ' ',
+          h('button', { onclick: openLoopFolder }, auto ? 'Open a folder instead…' : 'Open the pedal drive or ROLAND folder…')),
+        !auto ? h('p', { class: 'info' }, S.midi.connected ? 'Put the pedal in storage mode first: MENU › STORAGE › CONNECTING.' : 'Connect the pedal, or put it in storage mode on the pedal: MENU › STORAGE › CONNECTING.') : null);
     }
     if (!S.loops) { scanLoops().then(render, errToast); return h('div', { class: 'empty' }, h('p', null, 'Scanning ROLAND/WAVE…')); }
     var onlyUsed = !!S.loopsOnlyUsed;
@@ -661,7 +703,7 @@
         h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: onlyUsed, onchange: function (e) { S.loopsOnlyUsed = e.target.checked; render(); } }), ' Only memories with loops'),
         h('button', { onclick: function () { S.loops = null; render(); } }, '↻ Rescan'))),
     h('p', { class: 'info' }, 'Imported audio is converted to the RC-500 format (44.1 kHz, 32-bit float, stereo) and copied to ROLAND/WAVE/<memory>_<track>. ' +
-      (S.store.writable ? 'The pedal picks up the new phrase when you leave storage mode.' : 'Read-only folder: imports are downloaded, copy them into the folder shown.')),
+      (LS().writable ? 'The pedal picks up the new phrase when you leave storage mode.' : 'Read-only folder: imports are downloaded, copy them into the folder shown.')),
     h('table', { class: 'loops' }, h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'Memory'), h('th', null, 'Track 1'), h('th', null, 'Track 2'))), h('tbody', null, rows))];
   }
 
@@ -675,14 +717,23 @@
       f ? h('button', { class: 'small', title: playing ? 'Stop' : 'Play', onclick: function () { playLoop(i, t, f); } }, playing ? '■' : '▶') : null,
       f ? h('button', { class: 'small', title: 'Export WAV', onclick: function () { exportLoop(i, t, f); } }, '⬇') : null,
       h('button', { class: 'small', title: 'Import audio (WAV, MP3, …) into this track', onclick: function () { importLoop(i, t); } }, '⬆'),
-      f && S.store.writable ? h('button', { class: 'small danger', title: 'Delete this phrase', onclick: function () { deleteLoop(i, t, f); } }, '✕') : null);
+      f && LS().writable ? h('button', { class: 'small danger', title: 'Delete this phrase', onclick: function () { deleteLoop(i, t, f); } }, '✕') : null);
+  }
+
+  async function readLoopFile(path) {
+    try { return await LS().read(path); }
+    catch (e) {
+      // The drive is gone (the pedal left storage mode, or was unplugged): offer to open it again.
+      if (!(await driveReachable(LS()))) { S.loopDriveGone = true; S.loopTried = false; render(); throw new Error('The pedal’s drive isn’t available any more – it has left storage mode.'); }
+      throw e;
+    }
   }
 
   async function playLoop(i, t, f) {
     if (S.player) { var k = S.player.key; S.player.stop(); S.player = null; if (k === i + '_' + t) { render(); return; } }
     if (f.size > 150 * 1048576) throw new Error('Too large to preview here');
     toast('Loading ' + f.name + '…');
-    var bytes = await S.store.read(loopDir(i, t) + '/' + f.name);
+    var bytes = await readLoopFile(loopDir(i, t) + '/' + f.name);
     var AC = window.AudioContext || window.webkitAudioContext, ctx = new AC();
     var buf;
     try { buf = AU.wavToAudioBuffer(ctx, bytes); } catch (e) { buf = await ctx.decodeAudioData(bytes.buffer.slice(0)); }
@@ -692,7 +743,7 @@
     render();
   }
   async function exportLoop(i, t, f) {
-    var bytes = await S.store.read(loopDir(i, t) + '/' + f.name);
+    var bytes = await readLoopFile(loopDir(i, t) + '/' + f.name);
     var nm = RC0.memName(blk(i)).trim().replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_') || 'Memory';
     await PF.saveFile('RC500_' + pad2(i + 1) + '_' + nm + '_T' + t + '.wav', bytes, 'audio/wav');
   }
@@ -712,7 +763,7 @@
     var wav = AU.encodeRc500Wav(buf);
     var base = file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_\- ]+/g, '_').slice(0, 40) || 'IMPORT';
     var name = base + '.WAV';
-    if (!S.store.writable) {
+    if (!LS().writable) {
       await PF.saveFile(name, wav, 'audio/wav');
       dialog('Copy the file to the pedal', h('div', null,
         h('p', null, 'This folder was opened read-only, so the converted file was downloaded instead.'),
@@ -721,9 +772,9 @@
     }
     var old = S.loops && S.loops[i] && S.loops[i][t];
     var go = async function () {
-      var existing = (await S.store.list(loopDir(i, t))).filter(function (f) { return !f.dir && /\.wav$/i.test(f.name); });
-      for (var k = 0; k < existing.length; k++) await S.store.remove(loopDir(i, t) + '/' + existing[k].name);
-      await S.store.write(loopDir(i, t) + '/' + name, wav);
+      var existing = (await LS().list(loopDir(i, t))).filter(function (f) { return !f.dir && /\.wav$/i.test(f.name); });
+      for (var k = 0; k < existing.length; k++) await LS().remove(loopDir(i, t) + '/' + existing[k].name);
+      await LS().write(loopDir(i, t) + '/' + name, wav);
       S.loops[i] = S.loops[i] || {}; S.loops[i][t] = { name: name, size: wav.length, secs: buf.duration };
       toast('Imported into memory ' + (i + 1) + ', track ' + t); render();
     };
@@ -735,7 +786,7 @@
     dialog('Delete phrase?', h('p', null, 'Delete ' + f.name + ' from memory ' + (i + 1) + ', track ' + t + '? This cannot be undone.'),
       [{ label: 'Cancel' }, {
         label: 'Delete', danger: true, onclick: async function () {
-          await S.store.remove(loopDir(i, t) + '/' + f.name); delete S.loops[i][t]; render();
+          await LS().remove(loopDir(i, t) + '/' + f.name); delete S.loops[i][t]; render();
         }
       }]);
   }
@@ -782,13 +833,18 @@
     try { S.midi.send(bytes); if (bytes[0] !== 0xF8) logMidi('out', bytes); } catch (e) { errToast(e); }
   }
 
+  var connecting = false;
   async function connectMidi() {
+    if (connecting) return;                                   // a second click while connecting does nothing
+    if (S.midi.connected) { toast('Already connected to ' + S.midi.name); return; }
+    connecting = true;
     try {
       await S.midi.connect();
       toast('Connected to ' + S.midi.name);
       afterConnect();
       if (!S.midi.sysexOk) toast('SysEx was not allowed: storage mode switching is unavailable', 'err');
     } catch (e) { errToast(e); }
+    finally { connecting = false; }
     render();
   }
 
@@ -802,26 +858,45 @@
     if ((m[0] & 0xF0) === 0xC0 && S.followPedal && S.mem && m[1] < 99) { selectMemory(m[1], true); }
   });
 
+  // Only one storage-mode change at a time: repeated requests while the pedal is mounting or
+  // unmounting its drive can upset it (and the file system on it).
+  var storageLock = false;
+  async function withStorageLock(fn) {
+    if (storageLock) { toast('The pedal is already switching storage mode – wait a moment', 'err'); return; }
+    storageLock = true;
+    try { return await fn(); } finally { storageLock = false; }
+  }
+
+  /** On a computer the drive must be ejected before the pedal leaves storage mode, or the file system can be damaged. */
+  function confirmEjected(intro) {
+    if (PF.isAndroid || !S.storage) return Promise.resolve(true);
+    return new Promise(function (res) {
+      dialog('Eject the drive first', h('div', null,
+        intro ? h('p', null, intro) : null,
+        h('p', null, 'Before the pedal goes back to play mode, eject the “BOSS RC-500” drive on the computer, so nothing is half-written when it disappears:'),
+        h('ul', null,
+          h('li', null, 'Windows: the USB icon by the clock (or File Explorer › right-click the drive) › Eject.'),
+          h('li', null, 'Mac: drag the drive to the Trash, or Eject in Finder.')),
+        h('p', { class: 'info' }, 'Wait until the computer says it is safe to remove it.')),
+        [{ label: 'Later', onclick: function () { res(false); } }, { label: 'Drive is ejected', primary: true, onclick: function () { res(true); } }]);
+    });
+  }
+
   async function storageMode(on) {
     if (!S.midi.connected) { await connectMidi(); if (!S.midi.connected) return; }
-    if (!on && S.store && S.store.writable && !PF.isAndroid) {
-      var ok = await new Promise(function (res) {
-        dialog('Leave storage mode', h('div', null, h('p', null, 'Eject the “BOSS RC-500” drive in your operating system first, so that everything is written to the pedal.'),
-          h('p', null, 'Then the pedal reloads its memories.')), [{ label: 'Cancel', onclick: function () { res(false); } }, { label: 'Drive is ejected', primary: true, onclick: function () { res(true); } }]);
-      });
-      if (!ok) return;
-    }
-    toast(on ? 'Asking the pedal for storage mode…' : 'Leaving storage mode…');
-    try {
-      var res = await S.midi.setEditMode(on);
-      if (!res.ok) throw new Error(res.last === 2 ? 'The pedal keeps answering “busy”. Make sure it is stopped and on its play screen, or use MENU › STORAGE on the pedal.'
-        : res.last === -1 ? 'The pedal did not answer. Check the USB cable, or use MENU › STORAGE on the pedal.'
-        : 'The pedal did not switch. Try again, or use MENU › STORAGE on the pedal.');
-      S.storage = on;
-      if (on) toast('Storage mode on — the “BOSS RC-500” drive appears in a few seconds');
-      else { toast('Storage mode off — the pedal reloads its data'); S.autoStorage = false; }
-    } catch (e) { errToast(e); }
-    render();
+    if (!on) return leaveStorage();
+    return withStorageLock(async function () {
+      toast('Asking the pedal for storage mode…');
+      try {
+        var res = await S.midi.setEditMode(true);
+        if (!res.ok) throw new Error(res.last === 2 ? 'The pedal keeps answering “busy”. Make sure it is stopped and on its play screen, or use MENU › STORAGE on the pedal.'
+          : res.last === -1 ? 'The pedal did not answer. Check the USB cable, or use MENU › STORAGE on the pedal.'
+          : 'The pedal did not switch. Try again, or use MENU › STORAGE on the pedal.');
+        S.storage = true;
+        toast('Storage mode on — the “BOSS RC-500” drive appears in a few seconds');
+      } catch (e) { errToast(e); }
+      render();
+    });
   }
 
   function pageRemote() {
@@ -1129,7 +1204,7 @@
     S.store = store; S.mem = m.db; S.sys = s.db;
     S.origMem = RC0.clone(m.db); S.origSys = RC0.clone(s.db);
     S.files = { mem: m, sys: s, memName: 'MEMORY' + m.load + '.RC0', sysName: 'SYSTEM' + s.load + '.RC0' };
-    S.undo = []; S.redo = []; S.loops = null;
+    S.undo = []; S.redo = []; S.loops = null; S.loopStore = null; S.loopDriveGone = false;
     var mn = sget('SETUP', 'MemoryNumber'); S.cur = mn >= 0 && mn < 99 ? mn : 0;
     toast('Loaded ' + S.files.memName + ' and ' + S.files.sysName + (store.writable ? '' : ' (read-only)'));
     render();
@@ -1188,8 +1263,12 @@
     var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect;
     if (auto) {
       b.set('Switching the pedal to storage mode…');
-      var on = (await S.midi.queryEditMode()) === 1;
-      if (!on) { var r = await S.midi.setEditMode(true); on = r.ok; if (on) S.autoStorage = true; }
+      if (storageLock) throw new Error('The pedal is already switching storage mode – try again in a moment.');
+      storageLock = true;
+      try {
+        var on = (await S.midi.queryEditMode()) === 1;
+        if (!on) { var r = await S.midi.setEditMode(true); on = r.ok; if (on) S.autoStorage = true; }
+      } finally { storageLock = false; }
       if (on) {
         S.storage = true;
         var remembered = await PF.Storage.hasRemembered();
@@ -1222,12 +1301,19 @@
   }
 
   /** Leave storage mode so the pedal reloads its data and can play again. */
-  async function leaveStorage(quiet) {
-    if (!S.midi.connected) { if (!quiet) toast('Leave storage mode on the pedal (press EXIT).'); S.storage = false; render(); return; }
-    var r = await S.midi.setEditMode(false);
-    S.storage = false; S.autoStorage = false;
-    if (!quiet) toast(r.ok ? 'The pedal is back in play mode and has reloaded its memories' : 'Leave storage mode on the pedal (press EXIT)', r.ok ? '' : 'err');
-    S.loops = S.loops; render();
+  /** Switch the pedal back to play mode. opts.ejected: the user has already confirmed the drive is ejected. */
+  async function leaveStorage(opts) {
+    opts = typeof opts === 'object' && opts ? opts : { quiet: !!opts };
+    if (!S.midi.connected) { if (!opts.quiet) toast('Eject the drive, then leave storage mode on the pedal (press EXIT).'); S.storage = false; render(); return; }
+    if (!opts.ejected && !(await confirmEjected(opts.intro))) { render(); return false; }
+    return withStorageLock(async function () {
+      if (!PF.isAndroid) await PF.sleep(500);
+      var r = await S.midi.setEditMode(false);
+      S.storage = false; S.autoStorage = false; S.loopDriveGone = true; S.loopTried = true;
+      if (!opts.quiet) toast(r.ok ? 'The pedal is back in play mode and has reloaded its memories' : 'Leave storage mode on the pedal (press EXIT)', r.ok ? '' : 'err');
+      render();
+      return true;
+    });
   }
 
   async function openFolder() {
@@ -1302,11 +1388,17 @@
                 S.files.memName = 'MEMORY' + f.mem.load + '.RC0'; S.files.sysName = 'SYSTEM' + f.sys.load + '.RC0';
                 S.origMem = RC0.clone(S.mem); S.origSys = RC0.clone(S.sys);
                 if (S.midi.connected && S.midi.sysexOk && S.storage) {
-                  b.set('Switching storage mode off…');
-                  await PF.sleep(1500); // let the computer finish writing to the drive
-                  await leaveStorage(true);
-                  b.close();
-                  toast('Saved and checked. The pedal has reloaded its memories.');
+                  if (PF.isAndroid) {
+                    b.set('Switching storage mode off…');
+                    await PF.sleep(3000); // let Android finish writing to the drive
+                    await leaveStorage({ ejected: true, quiet: true });
+                    b.close();
+                    toast('Saved and checked. The pedal has reloaded its memories.');
+                  } else {
+                    b.close();
+                    var left = await leaveStorage({ quiet: true, intro: 'Saved and checked.' });
+                    toast(left ? 'Saved. The pedal has reloaded its memories.' : 'Saved. Eject the drive and leave storage mode when you are ready (Start page or the pedal’s EXIT).');
+                  }
                 } else {
                   b.close();
                   dialog('Saved', h('div', null, h('p', null, 'Written and checked.'),

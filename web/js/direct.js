@@ -152,7 +152,8 @@
     var h = A.h;
     var val = sim.lvl[t];
     var thumb = h('div', { class: 'vthumb' });
-    var ticks = h('div', { class: 'vticks' }); for (var i = 0; i < 7; i++) ticks.appendChild(h('i'));
+    // as on the pedal: three long marks, with four short ones between each pair
+    var ticks = h('div', { class: 'vticks' }); for (var i = 0; i < 11; i++) ticks.appendChild(h('i', { class: i % 5 ? 's' : null }));
     var track = h('div', { class: 'vtrack' + (enabled ? '' : ' dis'), title: enabled ? 'Track ' + t + ' level: sets the level on the pedal. The pedal does not report its own sliders, so this one does not follow them.' : 'Set up Direct mode to use the slider' }, ticks, h('div', { class: 'vgroove' }), thumb);
     function place(v) { thumb.style.bottom = 'calc(' + (v / 200 * 100) + '% - ' + (v / 200 * 30) + 'px)'; }
     place(val);
@@ -292,8 +293,13 @@
       have.undo ? function () { press(fn('undo')); setTimeout(function () { release(fn('undo')); }, 60); A.toast('Undo/redo'); } : null, 'Space', 'recled', recLed());
     var stop = footswitch('STOP', ok('stop'), function () {
       // The pedal's ASSIGN target is PLY/STP (a toggle), so only send it when the track is going.
-      var t = sim.tr[sim.cur];
-      if (t.st === 'rec' || t.st === 'play' || t.st === 'dub') { press(fn('stop')); setTimeout(function () { release(fn('stop')); }, 60); t.st = 'stop'; }
+      // While a new loop is being recorded, PLY/STP first ends the recording and starts playback,
+      // so it takes a second PLY/STP to stop – the real STOP switch does both in one press.
+      var t = sim.tr[sim.cur], f = fn('stop');
+      function tapStop(after) { setTimeout(function () { press(f); setTimeout(function () { release(f); }, 60); }, after); }
+      if (t.st === 'rec') { tapStop(0); tapStop(180); t.st = 'stop'; }
+      else if (t.st === 'play' || t.st === 'dub') { tapStop(0); t.st = 'stop'; }
+      t.stopAt = performance.now();
       updateLights();
     },
       have.clear ? function () { press(fn('clear')); setTimeout(function () { release(fn('clear')); }, 60); sim.tr[sim.cur].st = 'empty'; updateLights(); A.toast('Track ' + sim.cur + ' cleared'); } : null, 'S (hold: clear)', 'stopled', 'white');
@@ -302,7 +308,13 @@
 
     var panel = h('div', { class: 'rcpanel' + (conn ? '' : ' off'), 'aria-disabled': conn ? null : 'true' },
       // jacks along the top edge
-      [144, 393, 473, 560, 660].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
+      // jacks along the top edge, left to right as seen from above
+      [144, 400, 490, 588, 690].map(function (x) { return at(x, -14, h('span', { class: 'jack' })); }),
+      [238, 312].map(function (x) { return at(x, -9, h('span', { class: 'jack mini' })); }),
+      at(832, -3, h('span', { class: 'xlr' })),
+      [[144, 'CTL 1,2/EXP'], [238, 'MIDI IN'], [312, 'MIDI OUT'], [400, 'B'], [490, 'A/MONO'], [588, 'B'], [690, 'A/MONO'], [832, 'MIC IN']]
+        .map(function (j) { return at(j[0], -36, h('span', { class: 'jlabel' }, j[1])); }),
+      at(445, -56, h('span', { class: 'jlabel grp' }, 'OUTPUT')), at(639, -56, h('span', { class: 'jlabel grp' }, 'INST IN')),
       at(887, 40, h('div', { class: 'logo' }, h('span', { class: 'ls' }, 'LOOP STATION'), h('span', { class: 'mdl' }, 'RC-500'))),
       // track sliders
       at(116, 164, vslider(1, ok('lvl1'))), at(211, 164, vslider(2, ok('lvl2'))),
@@ -341,7 +353,7 @@
       label(647, 281, 'WRITE'), at(647, 296, h('span', { class: 'hline' })),
       sqbtn(609, 340, 'EXIT', false, null, 'EXIT (only on the pedal)'),
       sqbtn(685, 340, 'ENTER', false, null, 'ENTER (only on the pedal)'),
-      at(460, 420, h('span', { class: 'seam' })),
+      at(460, 420, h('span', { class: 'seam' })), at(460, 431, h('span', { class: 'seamshade' })),
       // footswitches
       at(108, 572, rec), at(456, 572, stop), at(807, 572, sel));
     var wrap = h('div', { class: 'rcwrap' + (conn ? '' : ' off') }, panel,
@@ -430,9 +442,18 @@
 
   /** Scale the fixed-size panel to the available width. */
   function fit(wrap, panel) {
-    var w = wrap.clientWidth || 900, s = Math.min(1.2, w / 920, Math.max(0.45, (window.innerHeight - 190) / 714));
+    // Fit the width, and if possible the height too, so the panel and the key help below it fit in the window.
+    var TOP = 64, w = wrap.clientWidth || 900;
+    var sc = wrap.parentElement; while (sc && sc !== document.body && !/(auto|scroll)/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement;
+    var scTop = sc && sc !== document.body ? sc.getBoundingClientRect().top - sc.scrollTop : -window.scrollY;
+    var above = wrap.getBoundingClientRect().top - scTop, after = 0;
+    for (var n = wrap.nextElementSibling; n; n = n.nextElementSibling) after += n.offsetHeight + 12;
+    var viewH = sc && sc !== document.body ? sc.clientHeight + (sc.getBoundingClientRect().top) : window.innerHeight;
+    var hs = (viewH - (sc && sc !== document.body ? sc.getBoundingClientRect().top : 0) - above - after - 40) / (714 + TOP);
+    var s = Math.min(1.1, w / 920, Math.max(0.45, hs));
     panel.style.transform = 'scale(' + s + ')';
-    wrap.style.height = Math.ceil(panel.offsetHeight * s) + 'px';
+    wrap.style.paddingTop = Math.round(TOP * s) + 'px';
+    wrap.style.height = Math.ceil((714 + TOP) * s) + 'px';
   }
   window.addEventListener('resize', function () { var w = document.querySelector('.rcwrap'), p = document.querySelector('.rcpanel'); if (w && p) fit(w, p); });
 
@@ -456,7 +477,7 @@
       });
       updateLights(); return true;
     }
-    if (m[0] === 0xFA) { [1, 2].forEach(function (t) { if (sim.tr[t].st === 'stop') sim.tr[t].st = 'play'; }); updateLights(); }
+    if (m[0] === 0xFA) { [1, 2].forEach(function (t) { var tr = sim.tr[t]; if (tr.st === 'stop' && !(tr.stopAt && performance.now() - tr.stopAt < 600)) tr.st = 'play'; }); updateLights(); }
     if (m[0] === 0xFC) { [1, 2].forEach(function (t) { var tr = sim.tr[t]; if (tr.st === 'rec' || tr.st === 'play' || tr.st === 'dub') tr.st = 'stop'; }); updateLights(); }
     return false;
   }

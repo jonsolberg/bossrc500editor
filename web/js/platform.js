@@ -408,18 +408,23 @@
   };
   /** Switch storage (edit) mode on/off, retrying the way BOSS TONE STUDIO does.
       Resolves {ok, last} where last is the pedal's last answer (0 off, 1 on, 2 busy, -1 none). */
+  /**
+   * Switch storage mode on/off and wait until the pedal confirms. The request is sent once; while the pedal
+   * answers "busy" (it is mounting or unmounting its drive) we only wait. It is repeated at most twice, and only
+   * if the pedal clearly stays in the old state – repeated requests in the middle of a switch can upset it.
+   */
   Midi.prototype.setEditMode = async function (on, timeoutMs) {
-    var t0 = Date.now(), want = on ? 1 : 0, answered = false, last = -1, busySince = 0;
+    var t0 = Date.now(), want = on ? 1 : 0, answered = false, last = -1, sends = 0, lastSend = 0;
     if (on) { try { this.send([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]); } catch (e) { } await sleep(300); } // identity request ("hello")
-    while (Date.now() - t0 < (timeoutMs || 10000)) {
+    while (Date.now() - t0 < (timeoutMs || 12000)) {
       var m = await this.queryEditMode();
       if (m >= 0) { answered = true; last = m; }
       if (m === want) return { ok: true, last: m };
-      if (m === 2) { if (!busySince) busySince = Date.now(); }
-      else busySince = 0;
-      // Send the request when the pedal is off, and also every second while it keeps saying busy.
-      if (m !== 2 || Date.now() - busySince > 1500) { this.send(SYSEX.dt1(SYSEX.ADDR_EDIT, [want])); if (m === 2) busySince = Date.now() - 500; }
-      await sleep(250);
+      var idle = m !== 2 && (m >= 0 || !answered);
+      if (sends === 0 || (idle && sends < 3 && Date.now() - lastSend > 3000)) {
+        this.send(SYSEX.dt1(SYSEX.ADDR_EDIT, [want])); sends++; lastSend = Date.now();
+      }
+      await sleep(400);
     }
     if (!answered && !on) return { ok: true, last: -1 }; // the pedal often stops answering once it leaves storage mode
     return { ok: false, last: last };
