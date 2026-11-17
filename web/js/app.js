@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.46';
+  var VERSION = '2.47';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -259,6 +259,27 @@
     try { localStorage.setItem('rc500-theme', { auto: 'light', light: 'dark', dark: 'auto' }[t]); } catch (e) { }
     applyTheme();
   }
+  /**
+   * Storage mode can also end on the pedal itself (EXIT, a footswitch, unplugging), and nothing tells us.
+   * While we think it is on, ask the pedal now and then; two "off" answers in a row mean it has left.
+   * (Android otherwise keeps showing the old drive, which only holds what was already read.)
+   */
+  var storageWatchOff = 0;
+  setInterval(function () {
+    if (!S.storage || !S.midi.connected || !S.midi.sysexOk || storageLock || document.hidden) { storageWatchOff = 0; return; }
+    S.midi.queryEditMode(1500).then(function (v) {
+      if (v !== 0 || !S.storage || storageLock) { if (v >= 0) storageWatchOff = 0; return; }
+      if (++storageWatchOff < 2) return;
+      storageWatchOff = 0;
+      S.storage = false; S.autoStorage = false; S.loopDriveGone = true; S.loopTried = false; S.driveWritten = false;
+      logMidi('mark', null, '──── the pedal left storage mode by itself ────');
+      toast(PF.isAndroid
+        ? 'The pedal has left storage mode. If its drive doesn’t come back when you open Loops, unplug the cable from the phone and plug it in again.'
+        : 'The pedal has left storage mode.');
+      render();
+    });
+  }, 3000);
+
   /** The header button switches theme (automatic → light → dark). */
   function moreMenu() { nextTheme(); }
   // The open tab is kept only for this visit (a reload stays put); a new visit always starts on Start.
