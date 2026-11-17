@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.26';
+  var VERSION = '2.27';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -774,6 +774,7 @@
     var old = S.loops && S.loops[i] && S.loops[i][t];
     var go = async function () {
       var existing = (await LS().list(loopDir(i, t))).filter(function (f) { return !f.dir && /\.wav$/i.test(f.name); });
+      S.driveWritten = true;
       for (var k = 0; k < existing.length; k++) await LS().remove(loopDir(i, t) + '/' + existing[k].name);
       await LS().write(loopDir(i, t) + '/' + name, wav);
       S.loops[i] = S.loops[i] || {}; S.loops[i][t] = { name: name, size: wav.length, secs: buf.duration };
@@ -803,6 +804,7 @@
     dialog('Delete phrase?', h('p', null, 'Delete ' + f.name + ' from memory ' + (i + 1) + ', track ' + t + '? This cannot be undone.'),
       [{ label: 'Cancel' }, {
         label: 'Delete', danger: true, onclick: async function () {
+          S.driveWritten = true;
           await LS().remove(loopDir(i, t) + '/' + f.name); delete S.loops[i][t];
           setPhraseInfo(i, t, 0); render();
           savePhraseInfo('Deleted.');
@@ -888,7 +890,8 @@
 
   /** On a computer the drive must be ejected before the pedal leaves storage mode, or the file system can be damaged. */
   function confirmEjected(intro) {
-    if (PF.isAndroid || !S.storage) return Promise.resolve(true);
+    // Only writes leave the drive needing a proper eject (Windows marks it dirty); after just reading, leaving is safe.
+    if (PF.isAndroid || !S.storage || !S.driveWritten) return Promise.resolve(true);
     return new Promise(function (res) {
       dialog('Eject the drive first', h('div', null,
         intro ? h('p', null, intro) : null,
@@ -997,7 +1000,7 @@
     // (On the Loops tab, opening the drive for the loops reads them too.)
     var autoLoad = S.midi.sysexOk && !S.store && !anyDirty() && PF.Storage.canWriteDirect && S.page !== 'loops' && !S.autoLoaded;
     if (S.midi.sysexOk) S.midi.queryEditMode(800).then(function (v) {
-      if (v >= 0) { S.storage = v === 1; refreshChrome(); if (S.page === 'start') render(); }
+      if (v >= 0) { S.storage = v === 1; if (S.storage) S.driveWritten = true; /* unknown history: play safe */ refreshChrome(); if (S.page === 'start') render(); }
       if (autoLoad && !S.store) { S.autoLoaded = true; loadFromPedal(); }
     });
     refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote' || S.page === 'loops') render();
@@ -1349,7 +1352,7 @@
     return withStorageLock(async function () {
       if (!PF.isAndroid) await PF.sleep(500);
       var r = await S.midi.setEditMode(false);
-      S.storage = false; S.autoStorage = false; S.loopDriveGone = true;
+      S.storage = false; S.autoStorage = false; S.loopDriveGone = true; S.driveWritten = false;
       // Left from the Loops tab: don't switch straight back. Moved to Loops meanwhile: let it open the drive again.
       S.loopTried = fromLoops || S.page !== 'loops';
       if (!opts.quiet) toast(r.ok ? 'The pedal is back in play mode and has reloaded its memories' : 'Leave storage mode on the pedal (press EXIT)', r.ok ? '' : 'err');
@@ -1422,6 +1425,7 @@
                   var counter = (x[2].counter + 2) >>> 0, bytes = RC0.serialize(x[1], counter);
                   var path = 'DATA/' + x[0] + x[2].write + '.RC0';
                   b.set('Writing ' + x[0] + x[2].write + '.RC0…');
+                  S.driveWritten = true;
                   await S.store.write(path, bytes);
                   var back = await S.store.read(path);
                   if (back.length !== bytes.length || back.some(function (v, n) { return v !== bytes[n]; })) throw new Error('Verification of ' + path + ' failed');
