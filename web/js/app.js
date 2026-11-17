@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.28';
+  var VERSION = '2.29';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1027,6 +1027,7 @@
             h('li', null, 'Connect its USB port with a cable that carries data' + (PF.isAndroid ? ' (USB-C/OTG on the phone).' : '.')),
             !PF.isAndroid ? h('li', null, /Firefox/.test(navigator.userAgent) ? 'Firefox asks to add a small “site permission” for MIDI — allow it, including SysEx.' : 'Your browser asks to allow MIDI devices — allow it.') : null),
         !mid ? h('p', { class: 'warn' }, 'This browser has no USB MIDI. Use Chrome, Edge or Firefox (or the Android app).') : null,
+        !PF.isAndroid && !PF.Storage.canWriteDirect ? h('p', { class: 'info' }, 'Recommended: Chrome or Edge (or another Chromium-based browser such as Opera). They switch the pedal’s storage mode, read and save directly on the pedal; this browser can only read it, and you copy saved files over yourself.') : null,
         h('div', { class: 'btnrow' },
           conn ? h('button', { onclick: function () { S.midi.disconnect(); render(); } }, 'Disconnect')
             : h('button', { class: 'primary', disabled: !mid, onclick: connectMidi }, 'Connect'),
@@ -1105,6 +1106,7 @@
         h('li', null, 'Write directly to the pedal: ', fsa || PF.isAndroid ? '✅' : '❌ (Firefox/Safari can only read the folder; saving downloads the files)'),
         h('li', null, 'USB MIDI (Direct, MIDI page, automatic storage mode): ', navigator.requestMIDIAccess || PF.isAndroid ? '✅' : '❌'),
         h('li', null, 'Secure page (needed for both): ', window.isSecureContext ? '✅' : '❌ open the https version')),
+      h('p', { class: 'info' }, 'Recommended: Chrome or Edge on a computer (or another Chromium-based browser such as Opera), or the Android app – they do all of the above.'),
       h('h3', null, 'Good to know'),
       h('ul', null,
         h('li', null, 'Tap ⓘ next to a setting for an explanation. Changes stay in the editor until you save; ↶ and ↷ in the header undo and redo them.'),
