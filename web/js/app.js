@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.7';
+  var VERSION = '2.8';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -461,7 +461,7 @@
       ]),
       card('Assign 1–8', [h('p', { class: 'info' }, 'Extra controls: when something happens (a switch, a pedal, a MIDI CC…), change a function or setting.'),
         h('div', { class: 'assigns' }, assigns)], 'wide'),
-      card('Other stored values (advanced)', rawEditor('mem', S.cur), 'wide raw')
+      card('Values without a control (advanced)', rawEditor('mem', S.cur), 'wide raw')
     )];
   }
 
@@ -507,13 +507,14 @@
     }
     var showAll = !!S.rawAll;
     var d = h('details', { open: S.rawOpen ? '' : null, ontoggle: function (e) { S.rawOpen = e.target.open; } },
-      h('summary', null, 'Show the stored values'));
+      h('summary', null, 'Show them'));
     d.appendChild(h('div', { class: 'rawhelp' },
-      h('p', null, 'The pedal stores every setting as a number. Everything above is one of these numbers with a friendlier control. ',
-        'Here you can see the rest – settings the editor has no control for – and change them by typing a new number.'),
-      h('p', null, 'Only change a value if you know what it does (the BOSS RC-500 Parameter Guide lists them). Changed values are marked, and ↶ Undo works here too. Nothing reaches the pedal until you save.'),
+      h('p', null, 'Almost everything the pedal stores for ' + (db === 'mem' ? 'a memory' : 'the system') + ' is on this page as the controls above. ',
+        'A few values have no control of their own – mostly things the pedal keeps track of by itself, such as which track is selected or how long a recording is. ',
+        'They are listed here as numbers. You normally don’t need to change them.'),
+      h('p', null, 'If you do: type a new number. Changed values are highlighted, ↶ Undo works, and nothing reaches the pedal until you save.'),
       h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: showAll, onchange: function (e) { S.rawAll = e.target.checked; render(); } }),
-        ' Also show the settings that already have a control above')));
+        ' Also list the settings above as numbers')));
     var any = false;
     b.sections.forEach(function (s) {
       if (s.name === 'NAME' || /^ASSIGN/.test(s.name) && !showAll) return;
@@ -529,7 +530,7 @@
             }));
         }))));
     });
-    if (!any) d.appendChild(h('p', { class: 'info' }, 'Every stored value has its own control above.'));
+    if (!any) d.appendChild(h('p', { class: 'info' }, 'There are none here – every value has a control above.'));
     return d;
   }
 
@@ -594,7 +595,7 @@
         (function () { var f = Sy('INPUT', 'InstNs'); return row('Instrument noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the instrument inputs while recording.'); })(),
         sSel('INPUT light shows', 'INPUT', 'Indicator', L.peak, 'Which signal the INPUT level light follows.')
       ]),
-      card('Other stored values (advanced)', rawEditor('sys', 0), 'wide raw'))];
+      card('Values without a control (advanced)', rawEditor('sys', 0), 'wide raw'))];
   }
 
   // ------------------------------------------------------------------ loops (WAV)
