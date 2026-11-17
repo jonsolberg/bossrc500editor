@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.31';
+  var VERSION = '2.32';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -703,6 +703,8 @@
       h('div', { class: 'tools' },
         h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: onlyUsed, onchange: function (e) { S.loopsOnlyUsed = e.target.checked; render(); } }), ' Only memories with loops'),
         h('button', { onclick: function () { S.loops = null; render(); } }, '↻ Rescan'),
+        LS().writable ? h('button', { onclick: function () { importSetDialog().catch(errToast); } }, '⬆ Import a set…') : null,
+        h('button', { onclick: function () { exportAllLoops().catch(errToast); } }, '⬇ Export all…'),
         LS().writable ? h('button', { class: 'danger', onclick: deleteAllLoops }, 'Delete all…') : null)),
     h('p', { class: 'info' }, 'Imported audio is converted to the RC-500 format (44.1 kHz, 32-bit float, stereo) and copied to ROLAND/WAVE/<memory>_<track>. ' +
       (LS().writable ? 'The pedal picks up the new phrase when you leave storage mode.' : 'Read-only folder: imports are downloaded, copy them into the folder shown.')),
@@ -801,6 +803,131 @@
       h('p', { class: 'info' }, 'Save now, or later with Save to pedal.')),
       [{ label: 'Later' }, { label: 'Save now', primary: true, onclick: function () { setTimeout(function () { save().catch(errToast); }, 0); } }]);
   }
+  // ------------------------------------------------------------------ loops in bulk
+  function pickFiles(folder) {
+    return new Promise(function (res) {
+      var a = { type: 'file', multiple: true, accept: 'audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac', style: 'display:none' };
+      if (folder) a.webkitdirectory = true;
+      var inp = h('input', a);
+      inp.addEventListener('change', function () { res(Array.prototype.slice.call(inp.files)); inp.remove(); });
+      document.body.appendChild(inp); inp.click();
+    });
+  }
+  function isAudioName(n) { return /\.(wav|mp3|m4a|aac|ogg|oga|flac|aif|aiff)$/i.test(n) && n[0] !== '.'; }
+  /** "001_2 Pop06 (BPM108).wav" (from Export all) -> "Pop06 (BPM108)" */
+  function loopTitle(n) { return n.replace(/\.[^.]+$/, '').replace(/^\d{3}_[12] /, ''); }
+  function bpmOf(n) { var m = /BPM\s*(\d{2,3}(?:\.\d)?)/i.exec(n); return m ? +m[1] : 0; }
+  function freeSlots() {
+    var out = [];
+    for (var i = 0; i < 99; i++) for (var t = 1; t <= 2; t++) if (!(S.loops && S.loops[i] && S.loops[i][t])) out.push([i, t]);
+    return out;
+  }
+
+  /** Import many audio files at once into free tracks, e.g. a BOSS TONE STUDIO track set saved with Export all. */
+  async function importSetDialog() {
+    if (!S.loops) await scanLoops();
+    var files = [];
+    var count = h('p', { class: 'info' }, 'No files chosen yet.');
+    var startSel = h('select', null, Array.apply(null, { length: 99 }).map(function (_, i) { return h('option', { value: i }, pad2(i + 1) + ' ' + RC0.memName(blk(i)).trim()); }));
+    var firstFree = freeSlots()[0]; startSel.value = firstFree ? firstFree[0] : 0;
+    var mode = h('select', null, h('option', { value: 'one' }, 'One loop per memory (track 1)'), h('option', { value: 'both' }, 'Fill track 1 and track 2'));
+    var nameCb = h('input', { type: 'checkbox', checked: true }), tempoCb = h('input', { type: 'checkbox', checked: true });
+    function setFiles(list) {
+      files = list.filter(function (f) { return isAudioName(f.name); })
+        .sort(function (a, b) { return (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, { numeric: true }); });
+      count.textContent = files.length ? files.length + ' file' + (files.length === 1 ? '' : 's') + ': ' + files.slice(0, 4).map(function (f) { return loopTitle(f.name); }).join(', ') + (files.length > 4 ? ' …' : '') : 'No audio files found.';
+    }
+    dialog('Import a set of loops', h('div', null,
+      h('p', null, 'Choose a folder or several audio files. They go into the free tracks in name order, starting at the memory you pick; tracks that already have a phrase are skipped.'),
+      h('div', { class: 'btnrow' },
+        h('button', { onclick: function () { pickFiles(true).then(setFiles); } }, 'Choose a folder…'),
+        h('button', { onclick: function () { pickFiles(false).then(setFiles); } }, 'Choose files…')),
+      count,
+      h('div', { class: 'rangein' }, 'Start at memory ', startSel),
+      h('div', { class: 'rangein' }, mode),
+      h('label', { class: 'inl' }, nameCb, ' Name the memories after the files (12 characters)'), h('br'),
+      h('label', { class: 'inl' }, tempoCb, ' Set the memory tempo from “BPM…” in the file name'),
+      h('p', { class: 'info' }, 'WAV files already in the RC-500 format (as BOSS TONE STUDIO saves them) are copied unchanged; other audio is converted. Save to pedal afterwards to update the memories.')),
+      [{ label: 'Cancel' }, {
+        label: 'Import', primary: true, onclick: function () {
+          if (!files.length) { toast('Choose a folder or files first', 'err'); return false; }
+          importSet(files, +startSel.value, mode.value, nameCb.checked, tempoCb.checked).catch(errToast);
+        }
+      }]);
+  }
+
+  async function importSet(files, start, mode, names, tempos) {
+    var slots = freeSlots().filter(function (s) { return s[0] >= start && (mode === 'both' || s[1] === 1); });
+    if (mode === 'one') slots = slots.filter(function (s) { return !(S.loops[s[0]] && S.loops[s[0]][2]); });
+    var n = Math.min(files.length, slots.length);
+    if (!n) throw new Error('There are no free tracks from memory ' + (start + 1) + ' on.');
+    var b = busy('Importing…'), done = 0, named = {};
+    S.driveWritten = true;
+    begin();
+    try {
+      for (var k = 0; k < n; k++) {
+        var f = files[k], i = slots[k][0], t = slots[k][1], title = loopTitle(f.name);
+        b.set('Importing ' + (k + 1) + ' of ' + n + ': ' + title);
+        var bytes = new Uint8Array(await f.arrayBuffer()), wav = null, frames = 0;
+        try { var w = AU.wavInfo(bytes); if (w.format === 3 && w.bits === 32 && w.channels === 2 && w.rate === 44100) { wav = bytes; frames = w.frames; } } catch (e) { }
+        if (!wav) {
+          var buf = await AU.decodeAny(bytes);
+          if (buf.duration < 0.35) continue;
+          wav = AU.encodeRc500Wav(buf); frames = buf.length;
+        }
+        var fname = (title.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60) || loopDir(i, t).split('/').pop()) + '.wav';
+        var existing = (await LS().list(loopDir(i, t))).filter(function (x) { return !x.dir && /\.wav$/i.test(x.name); });
+        for (var e = 0; e < existing.length; e++) await LS().remove(loopDir(i, t) + '/' + existing[e].name);
+        await LS().write(loopDir(i, t) + '/' + fname, wav);
+        S.loops[i] = S.loops[i] || {}; S.loops[i][t] = { name: fname, size: wav.length, secs: frames / 44100 };
+        mset('TRACK' + t, 'WavStat', 1, i); mset('TRACK' + t, 'WavLen', frames, i);
+        if (names && !named[i]) {
+          named[i] = true;
+          var v = title.replace(/\s*\(BPM[^)]*\)/i, '').slice(0, 12);
+          for (var c = 0; c < 12; c++) { var cc = c < v.length ? v.charCodeAt(c) : 32; if (cc < 32 || cc > 126) cc = 95; mset('NAME', 'C' + pad2(c + 1), cc, i); }
+        }
+        var bpm = bpmOf(f.name);
+        if (tempos && bpm >= 40 && bpm <= 250) {
+          mset('TRACK' + t, 'RecTmp', Math.round(bpm * 10), i);
+          if (t === 1) mset('MASTER', 'Tempo', Math.round(bpm * 10), i);
+        }
+        done++;
+      }
+    } finally { commit(); b.close(); render(); }
+    var left = files.length - n;
+    savePhraseInfo('Imported ' + done + ' loop' + (done === 1 ? '' : 's') + (left > 0 ? ' – ' + left + ' did not fit (no free tracks left)' : '') + '.');
+  }
+
+  /** Save every phrase to a folder (Chrome/Edge) or a ZIP file, named "001_1 <name>.wav". */
+  async function exportAllLoops() {
+    if (!S.loops) await scanLoops();
+    var list = [];
+    for (var i = 0; i < 99; i++) for (var t = 1; t <= 2; t++) if (S.loops[i] && S.loops[i][t]) list.push([i, t, S.loops[i][t]]);
+    if (!list.length) { toast('There are no loops to export'); return; }
+    function outName(x) { return pad3(x[0] + 1) + '_' + x[1] + ' ' + x[2].name.replace(/\.wav$/i, '') + '.wav'; }
+    if (typeof window.showDirectoryPicker === 'function') {
+      var dir = await window.showDirectoryPicker({ id: 'rc500-loops', mode: 'readwrite' });
+      var b = busy('Exporting…');
+      try {
+        for (var k = 0; k < list.length; k++) {
+          b.set('Exporting ' + (k + 1) + ' of ' + list.length + '…');
+          var bytes = await readLoopFile(loopDir(list[k][0], list[k][1]) + '/' + list[k][2].name);
+          var fh = await dir.getFileHandle(outName(list[k]).replace(/[\\/:*?"<>|]+/g, '_'), { create: true });
+          var w = await fh.createWritable(); await w.write(bytes); await w.close();
+        }
+      } finally { b.close(); }
+      toast('Exported ' + list.length + ' loops to “' + dir.name + '”');
+      return;
+    }
+    var total = list.reduce(function (a, x) { return a + x[2].size; }, 0);
+    if (total > 700 * 1048576) throw new Error('That is ' + Math.round(total / 1048576) + ' MB – too much for one ZIP in this browser. Use Chrome or Edge, which save straight to a folder.');
+    var b2 = busy('Collecting the loops…'), files = [];
+    try {
+      for (var q = 0; q < list.length; q++) { b2.set('Reading ' + (q + 1) + ' of ' + list.length + '…'); files.push({ name: outName(list[q]), data: await readLoopFile(loopDir(list[q][0], list[q][1]) + '/' + list[q][2].name) }); }
+    } finally { b2.close(); }
+    await PF.saveFile('rc500-loops.zip', AU.zip(files), 'application/zip');
+  }
+
   /** Delete every phrase on the pedal (e.g. to make room for the next BOSS TONE STUDIO track set). */
   function deleteAllLoops() {
     var list = [];

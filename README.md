@@ -49,7 +49,11 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
 - Copy a memory to a range (choose which parts), copy/paste, swap, initialize; undo/redo
 - Presets: save a memory as a `.rc500.json` file and load it into any memory
 - **Loops**: see which memories have recorded phrases, play them, export them as WAV, import any audio file
-  (WAV/MP3/M4A … converted to the RC-500 format, 44.1 kHz 32-bit float stereo) or delete them
+  (WAV/MP3/M4A … converted to the RC-500 format, 44.1 kHz 32-bit float stereo) or delete them. In bulk:
+  **Export all** saves every loop to a folder, **Import a set** puts a folder of loops into the free tracks (naming
+  the memories and setting the tempo from "BPM…" in the file names), and **Delete all** clears the pedal. Handy for
+  BOSS TONE STUDIO's track sets: download them to the pedal there, export them here, and load them back whenever you
+  want (the tracks are BOSS's – keep your copies to yourself)
 - **MIDI page**: switch memories (program change), start/stop, play the CC numbers used by the memory's
   ASSIGNs (button + value slider), MIDI monitor, follow the pedal's memory changes
 - **Storage mode from the app**: the same SysEx that BOSS TONE STUDIO for RC sends turns the pedal's USB drive on/off,
