@@ -372,3 +372,9 @@ select.dim { opacity: .55; }
 .rawsec h4 small { color: var(--muted); font-weight: 400; }
 .rawgrid label.chg span { color: var(--dirty); font-weight: 600; }
 .rawgrid label.chg input { border-color: var(--dirty); }
+
+.stored h3 { margin: 16px 0 4px; font-size: 15px; }
+.rawgrid.ro .rawitem { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line, rgba(128,128,128,.2)); padding: 2px 0; }
+.rawgrid.ro .rawitem b { color: var(--text); font-variant-numeric: tabular-nums; }
+.modal:has(.stored) { max-width: min(920px, 96vw); }
+.modal:has(.stored) .modal-body { max-height: 70vh; overflow: auto; }

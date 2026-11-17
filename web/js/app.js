@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.8';
+  var VERSION = '2.9';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -238,6 +238,7 @@
       { label: '📁 Open a folder or backup…', onclick: openFolder },
       { label: '⬇ Backup of the pedal’s data', disabled: !S.store, onclick: function () { backup().catch(errToast); } },
       { label: '🏭 Start from factory settings', onclick: openFactory },
+      { label: '🔍 Show stored values', onclick: storedValuesDialog },
       null,
       { label: 'Theme: ' + t + ' → ' + ({ auto: 'light', light: 'dark', dark: 'auto' })[t], onclick: function () {
         try { localStorage.setItem('rc500-theme', ({ auto: 'light', light: 'dark', dark: 'auto' })[t]); } catch (e) { } applyTheme();
@@ -460,8 +461,7 @@
         })()
       ]),
       card('Assign 1–8', [h('p', { class: 'info' }, 'Extra controls: when something happens (a switch, a pedal, a MIDI CC…), change a function or setting.'),
-        h('div', { class: 'assigns' }, assigns)], 'wide'),
-      card('Values without a control (advanced)', rawEditor('mem', S.cur), 'wide raw')
+        h('div', { class: 'assigns' }, assigns)], 'wide')
     )];
   }
 
@@ -494,44 +494,31 @@
     WavStat: 'Has a recording (1 = yes)', WavLen: 'Recording length (samples)', CurrentTrack: 'Selected track (0 = 1, 1 = 2)',
     AllTrackSel: 'Both tracks selected', LpMod: 'Loop mode', TrkMod: 'Track mode', Sync: 'Sync',
     ScatterLength: 'Scatter: chop length', RepeatLength: 'Repeat: length', ShiftShift: 'Shift: shift by', VinylFlickFlick: 'Vinyl flick: amount' };
-  /** Every number stored in the file. By default only the ones without a control elsewhere on the page. */
-  function rawEditor(db, bi) {
-    var b = (db === 'mem' ? S.mem : S.sys).blocks[bi];
-    var orig = ((db === 'mem' ? S.origMem : S.origSys) || {}).blocks;
-    var ob = orig && orig[bi];
-    function origVal(sec, key) {
-      if (!ob) return undefined;
-      var os = ob.sections.filter(function (x) { return x.name === sec; })[0];
-      var of = os && os.fields.filter(function (x) { return x[0] === key; })[0];
-      return of ? of[1] : undefined;
+  /** Read-only view of everything stored for the selected memory and the system, for troubleshooting. */
+  function storedValuesDialog() {
+    function label(db, sec, key) { var l = covered[db][sec + '.' + key]; return typeof l === 'string' ? l : RAW_NAMES[key] || ''; }
+    var lines = [];
+    function block(db, b, title) {
+      var out = [h('h3', null, title)];
+      lines.push('== ' + title);
+      b.sections.forEach(function (s) {
+        if (s.name === 'NAME') return;
+        lines.push('[' + s.name + '] ' + s.fields.map(function (f) { return f[0] + '=' + f[1]; }).join(' '));
+        out.push(h('div', { class: 'rawsec' }, h('h4', null, (RAW_SECTIONS[s.name] || s.name.replace(/^ASSIGN/, 'Assign ')) + '  ', h('small', null, s.name)),
+          h('div', { class: 'rawgrid ro' }, s.fields.map(function (f) {
+            var l = label(db, s.name, f[0]);
+            return h('div', { class: 'rawitem', title: s.name + ' › ' + f[0] }, h('span', null, l || f[0]), h('b', null, String(f[1])));
+          }))));
+      });
+      return out;
     }
-    var showAll = !!S.rawAll;
-    var d = h('details', { open: S.rawOpen ? '' : null, ontoggle: function (e) { S.rawOpen = e.target.open; } },
-      h('summary', null, 'Show them'));
-    d.appendChild(h('div', { class: 'rawhelp' },
-      h('p', null, 'Almost everything the pedal stores for ' + (db === 'mem' ? 'a memory' : 'the system') + ' is on this page as the controls above. ',
-        'A few values have no control of their own – mostly things the pedal keeps track of by itself, such as which track is selected or how long a recording is. ',
-        'They are listed here as numbers. You normally don’t need to change them.'),
-      h('p', null, 'If you do: type a new number. Changed values are highlighted, ↶ Undo works, and nothing reaches the pedal until you save.'),
-      h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: showAll, onchange: function (e) { S.rawAll = e.target.checked; render(); } }),
-        ' Also list the settings above as numbers')));
-    var any = false;
-    b.sections.forEach(function (s) {
-      if (s.name === 'NAME' || /^ASSIGN/.test(s.name) && !showAll) return;
-      var fields = s.fields.filter(function (f) { return showAll || !covered[db][s.name + '.' + f[0]]; });
-      if (!fields.length) return;
-      any = true;
-      d.appendChild(h('div', { class: 'rawsec' }, h('h4', null, (RAW_SECTIONS[s.name] || s.name.replace(/^ASSIGN/, 'Assign ')) + '  ', h('small', null, s.name)),
-        h('div', { class: 'rawgrid' }, fields.map(function (f) {
-          var label = covered[db][s.name + '.' + f[0]], was = origVal(s.name, f[0]), changed = was !== undefined && was !== f[1];
-          return h('label', { class: changed ? 'chg' : null, title: (typeof label === 'string' ? label + ' – ' : '') + s.name + ' › ' + f[0] + (changed ? ' (was ' + was + ')' : '') },
-            h('span', null, typeof label === 'string' ? label : RAW_NAMES[f[0]] || f[0]), h('input', {
-              type: 'number', value: f[1], onchange: function (e) { setField(db, bi, s.name, f[0], parseInt(e.target.value, 10) || 0); render(); }
-            }));
-        }))));
-    });
-    if (!any) d.appendChild(h('p', { class: 'info' }, 'There are none here – every value has a control above.'));
-    return d;
+    var body = h('div', { class: 'stored' },
+      h('p', { class: 'info' }, 'Everything the editor has loaded for memory ' + (S.cur + 1) + ' and the system settings, as the numbers stored in the pedal’s files. Read only – for troubleshooting. Use Copy to send it to me if something looks wrong.'),
+      block('mem', S.mem.blocks[S.cur], 'Memory ' + (S.cur + 1) + ' – ' + RC0.memName(S.mem.blocks[S.cur]).trim()),
+      block('sys', S.sys.blocks[0], 'System'));
+    dialog('Stored values', body, [
+      { label: 'Copy', onclick: function () { try { navigator.clipboard.writeText(lines.join('\n')).then(function () { toast('Copied'); }); } catch (e) { errToast(e); } return false; } },
+      { label: 'Close', primary: true }]);
   }
 
   var taps = [];
@@ -594,8 +581,7 @@
         (function () { var f = Sy('INPUT', 'MicNs'); return row('Mic noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the mic while recording.'); })(),
         (function () { var f = Sy('INPUT', 'InstNs'); return row('Instrument noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the instrument inputs while recording.'); })(),
         sSel('INPUT light shows', 'INPUT', 'Indicator', L.peak, 'Which signal the INPUT level light follows.')
-      ]),
-      card('Values without a control (advanced)', rawEditor('sys', 0), 'wide raw'))];
+      ]))];
   }
 
   // ------------------------------------------------------------------ loops (WAV)

@@ -44,7 +44,7 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   variation, start/stop, count-ins, fill, parts, tone), pedal/CTL/EXP functions and **ASSIGN 1–8** with target-aware
   min/max values
 - **System settings**: display, undo/redo, preferences, system pedal functions, MIDI, extents, input/output
-- "Values without a control": the few numbers the pedal stores that have no control of their own (mostly things it keeps track of by itself), editable if you need to
+- ⋯ › Show stored values: a read-only view of every number stored for a memory and the system, for troubleshooting
 - Copy a memory to a range (choose which parts), copy/paste, swap, initialize; undo/redo
 - Presets: save a memory as a `.rc500.json` file and load it into any memory
 - **Loops**: see which memories have recorded phrases, play them, export them as WAV, import any audio file
