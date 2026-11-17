@@ -88,11 +88,6 @@
     if (startsPlaying && single) { var o = sim.tr[3 - sim.cur]; if (o.st !== 'empty') o.st = 'stop'; }
     if (sim.rhythm === 'ready' && startsPlaying) sim.rhythm = 'on';
   }
-  function stopTrack() {
-    var t = sim.tr[sim.cur];
-    if (t.st === 'rec' || t.st === 'play' || t.st === 'dub') t.st = 'stop';
-    else if (t.st === 'stop') t.st = 'play'; // PLY/STP toggles
-  }
 
   // ------------------------------------------------------------------ setup dialog
   function setupDialog() {
@@ -203,18 +198,34 @@
       The whole area around the small metal switch reacts, so it is easy to hit on a phone. */
   function footswitch(label, enabled, onPress, onHold, keyHint, ledId, ledCls) {
     var h = A.h;
-    var holdTimer = null;
-    var cap = h('span', { class: 'stomp' });
-    var sw = h('button', { class: 'fsw', disabled: !enabled, title: keyHint ? 'Key: ' + keyHint : '' },
-      h('span', { class: 'fswlabel' }, label), h('span', { id: ledId, class: 'pill ' + (ledCls || '') }), cap);
+    var holdTimer = null, pid = null;
+    var cap = h('span', { class: 'stomp' }, h('span', { class: 'holdring' }));
+    var sw = h('button', { class: 'fsw' + (onHold ? ' hashold' : ''), disabled: !enabled, title: keyHint ? 'Key: ' + keyHint : '' },
+      h('span', { class: 'fswlabel' }, label), h('span', { id: ledId, class: 'pill ' + (ledCls || '') }), cap,
+      onHold ? h('span', { class: 'holdhint' }, label === 'STOP' ? 'hold: clear' : 'hold: undo') : null);
+    function startHold() {
+      if (!onHold) return;
+      sw.classList.add('holding');
+      holdTimer = setTimeout(function () { holdTimer = null; sw.classList.remove('holding'); sw.classList.add('held'); onHold(); }, HOLD_MS);
+    }
+    function end() {
+      sw.classList.remove('down', 'holding', 'held');
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      pid = null;
+    }
     sw.addEventListener('pointerdown', function (e) {
-      if (e.button) return;
-      sw.classList.add('down'); onPress();
-      if (onHold) holdTimer = setTimeout(function () { holdTimer = null; onHold(); }, HOLD_MS);
+      if (e.button || pid !== null) return;
+      pid = e.pointerId;
+      // Keep the pointer while the finger/mouse is held, so a small slide doesn't cancel the hold.
+      try { sw.setPointerCapture(e.pointerId); } catch (x) { }
+      e.preventDefault();
+      sw.classList.add('down'); onPress(); startHold();
     });
-    var up = function () { sw.classList.remove('down'); if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
-    sw.addEventListener('pointerup', up); sw.addEventListener('pointerleave', up); sw.addEventListener('pointercancel', up);
-    sw.__press = onPress; sw.__hold = onHold;
+    sw.addEventListener('pointerup', function (e) { if (e.pointerId === pid) end(); });
+    sw.addEventListener('pointercancel', function (e) { if (e.pointerId === pid) end(); });
+    sw.addEventListener('lostpointercapture', function (e) { if (e.pointerId === pid) end(); });
+    sw.addEventListener('contextmenu', function (e) { e.preventDefault(); }); // long press on a phone
+    sw.__press = onPress; sw.__hold = onHold; sw.__startHold = startHold; sw.__end = end;
     return h('div', { class: 'fswwrap' }, sw);
   }
 
@@ -275,7 +286,12 @@
 
     var rec = footswitch('REC/PLAY', ok('rec'), function () { press(fn('rec')); recPlay(); updateLights(); setTimeout(function () { release(fn('rec')); }, 60); },
       have.undo ? function () { press(fn('undo')); setTimeout(function () { release(fn('undo')); }, 60); A.toast('Undo/redo'); } : null, 'Space', 'recled', recLed());
-    var stop = footswitch('STOP', ok('stop'), function () { press(fn('stop')); stopTrack(); updateLights(); setTimeout(function () { release(fn('stop')); }, 60); },
+    var stop = footswitch('STOP', ok('stop'), function () {
+      // The pedal's ASSIGN target is PLY/STP (a toggle), so only send it when the track is going.
+      var t = sim.tr[sim.cur];
+      if (t.st === 'rec' || t.st === 'play' || t.st === 'dub') { press(fn('stop')); setTimeout(function () { release(fn('stop')); }, 60); t.st = 'stop'; }
+      updateLights();
+    },
       have.clear ? function () { press(fn('clear')); setTimeout(function () { release(fn('clear')); }, 60); sim.tr[sim.cur].st = 'empty'; updateLights(); A.toast('Track ' + sim.cur + ' cleared'); } : null, 'S (hold: clear)', 'stopled', 'white');
     var sel = footswitch('TRACK\nSELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T', 'trkled', 'red');
     keyActions = { ' ': rec, s: stop, t: sel };
@@ -328,6 +344,7 @@
     requestAnimationFrame(function () { fit(wrap, panel); });
 
     var notes = [];
+    if (S.storage) notes.push(h('div', { class: 'dnote' }, h('span', null, 'The pedal is in storage mode, so it can’t play right now.'), h('button', { class: 'primary', onclick: function () { A.leaveStorage(); } }, 'Leave storage mode')));
     if (!conn) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Connect the RC-500 over USB to play it from here.'), h('button', { class: 'primary', onclick: A.connectMidi }, 'Connect over USB MIDI')));
     var pendingSave = FUNCS.filter(function (f) { return f.def && !have[f.id]; }).length && !FUNCS.filter(function (f) { return f.def && !installed(mi, true)[f.id]; }).length;
     if (pendingSave) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is set up here, but not saved to the pedal yet. Save, put the file on the pedal and leave storage mode — then the controls work.')));
@@ -449,11 +466,8 @@
     var sw = keyActions[k];
     if (sw) {
       var b = sw.querySelector('button.fsw');
-      if (e.type === 'keydown' && !e.repeat && !b.disabled) {
-        b.classList.add('down'); b.__press();
-        if (b.__hold) b.__ht = setTimeout(function () { b.__ht = null; b.__hold(); }, HOLD_MS);
-      }
-      if (e.type === 'keyup') { b.classList.remove('down'); if (b.__ht) { clearTimeout(b.__ht); b.__ht = null; } }
+      if (e.type === 'keydown' && !e.repeat && !b.disabled) { b.classList.add('down'); b.__press(); b.__startHold(); }
+      if (e.type === 'keyup') b.__end();
       e.preventDefault(); return true;
     }
     if (e.type !== 'keydown') return false;
@@ -467,7 +481,15 @@
   document.addEventListener('keydown', onKey);
   document.addEventListener('keyup', onKey);
 
+  function isPrepared(mi) {
+    if (!A) return false;
+    var have = installed(mi);
+    return FUNCS.filter(function (f) { return f.def; }).every(function (f) { return have[f.id]; });
+  }
+
   window.RCDirect = {
+    isPrepared: function (mi) { return isPrepared(mi); },
+    setup: function () { setupDialog(); },
     page: function (api) { var r = page(api); if (!tempoTimer) restartTempo(); return r; },
     onMemory: function () { if (A) { resetSim(); restartTempo(); updateLights(); } },
     onMidi: onMidi,

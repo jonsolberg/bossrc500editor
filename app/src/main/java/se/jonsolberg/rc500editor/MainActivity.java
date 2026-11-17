@@ -138,6 +138,15 @@ public class MainActivity extends Activity {
                 if (p.getUri().equals(u) && p.isWritePermission()) tree = u;
         }
         midiManager = (MidiManager) getSystemService(Context.MIDI_SERVICE);
+        if (midiManager != null) {
+            // Let the editor connect by itself when the pedal is plugged in.
+            midiManager.registerDeviceCallback(new MidiManager.DeviceCallback() {
+                @Override
+                public void onDeviceAdded(MidiDeviceInfo info) {
+                    if (score(info) > 0) web.evaluateJavascript("window.__rcMidiAdded&&__rcMidiAdded()", null);
+                }
+            }, ui);
+        }
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl("file:///android_asset/index.html");
@@ -407,6 +416,9 @@ public class MainActivity extends Activity {
             try { children(DocumentsContract.getTreeDocumentId(tree)); return folderName(); } // still reachable?
             catch (Exception e) { return ""; }
         }
+
+        @JavascriptInterface
+        public boolean hasFolder() { return tree != null; }
 
         @JavascriptInterface
         public void pickFolder(int id) {

@@ -12,38 +12,35 @@
 <meta name="theme-color" content="#14171c">
 <title>RC-500 Editor</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/style.css?v=1.15">
+<link rel="stylesheet" href="css/style.css?v=2.0">
 </head>
 <body>
 <header class="top">
-  <button id="btnList" class="iconbtn only-narrow" title="Memories">☰</button>
   <div class="brand"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 9 9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="var(--accent)"/></svg>
-    <span>RC-500 <b>Editor</b></span></div>
-  <div class="chips">
-    <span id="src" class="chip"></span>
-    <button id="midistat" class="chip"></button>
-  </div>
+    <span class="only-wide">RC-500 <b>Editor</b></span></div>
+  <button id="memPick" class="mempick only-narrow" aria-label="Choose memory"></button>
+  <button id="status" class="status" title="Connection and data — click for the Start page"></button>
   <div class="actions">
-    <button id="btnOpen" class="primary" title="Open the BOSS RC-500 drive or its ROLAND folder">📂 Open pedal</button>
-    <button id="btnFactory" title="Start from factory settings">Factory</button>
-    <button id="btnUndo" class="iconbtn" title="Undo (Ctrl+Z)">↶</button>
-    <button id="btnRedo" class="iconbtn" title="Redo (Ctrl+Y)">↷</button>
-    <button id="btnBackup" title="Download a ZIP backup of ROLAND/DATA">⬇ Backup</button>
-    <button id="btnSave" class="save" title="Save (Ctrl+S)">💾 Save</button>
-    <button id="btnTheme" class="iconbtn"></button>
+    <button id="btnLoad" class="primary" title="Read the memories from the pedal"><span class="ic">⤓</span><span class="lb">Load from pedal</span></button>
+    <button id="btnSave" class="save" title="Write your changes to the pedal (Ctrl+S)"><span class="ic">⤒</span><span class="lb">Save to pedal</span></button>
+    <button id="btnUndo" class="iconbtn only-wide" title="Undo (Ctrl+Z)">↶</button>
+    <button id="btnRedo" class="iconbtn only-wide" title="Redo (Ctrl+Y)">↷</button>
+    <button id="btnMore" class="iconbtn" title="More" aria-label="More">⋯</button>
   </div>
 </header>
 <div id="banner"></div>
 <nav class="tabs">
-  <button data-page="direct">Direct</button>
-  <button data-page="memory">Memory</button>
-  <button data-page="system">System</button>
-  <button data-page="loops">Loops</button>
-  <button data-page="remote">Remote</button>
-  <button data-page="about">Help</button>
+  <button data-page="start"><span class="ti">⌂</span><span>Start</span></button>
+  <button data-page="direct"><span class="ti">◉</span><span>Direct</span></button>
+  <button data-page="memory"><span class="ti">☰</span><span>Memory</span></button>
+  <button data-page="system"><span class="ti">⚙</span><span>System</span></button>
+  <button data-page="loops"><span class="ti">∞</span><span>Loops</span></button>
+  <button data-page="remote" class="only-wide"><span class="ti">⇄</span><span>Remote</span></button>
+  <button data-page="about" class="only-wide"><span class="ti">?</span><span>Help</span></button>
 </nav>
 <div class="layout">
   <aside class="side">
+    <div class="sidehead only-narrow"><b>Choose memory</b><button id="btnCloseList" class="iconbtn" aria-label="Close">✕</button></div>
     <input id="memfilter" type="search" placeholder="Find memory…" aria-label="Find memory">
     <ul id="memlist"></ul>
   </aside>
@@ -51,12 +48,13 @@
 </div>
 <input id="dirinput" type="file" webkitdirectory directory multiple hidden>
 <div id="toasts"></div>
-<script src="js/factory.js?v=1.15"></script>
-<script src="js/rc0.js?v=1.15"></script>
-<script src="js/params.js?v=1.15"></script>
-<script src="js/audio.js?v=1.15"></script>
-<script src="js/platform.js?v=1.15"></script>
-<script src="js/direct.js?v=1.15"></script>
-<script src="js/app.js?v=1.15"></script>
+<script src="js/factory.js?v=2.0"></script>
+<script src="js/rc0.js?v=2.0"></script>
+<script src="js/params.js?v=2.0"></script>
+<script src="js/audio.js?v=2.0"></script>
+<script src="js/platform.js?v=2.0"></script>
+<script src="js/names.js?v=2.0"></script>
+<script src="js/direct.js?v=2.0"></script>
+<script src="js/app.js?v=2.0"></script>
 </body>
 </html>

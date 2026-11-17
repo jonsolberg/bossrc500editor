@@ -155,6 +155,23 @@
     };
   }
 
+  // A tiny IndexedDB store, to remember the picked drive between visits (Chromium keeps the handle).
+  function idb(mode, fn) {
+    return new Promise(function (res, rej) {
+      if (!root.indexedDB) { rej(new Error('no IndexedDB')); return; }
+      var r = indexedDB.open('rc500editor', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
+      r.onerror = function () { rej(r.error); };
+      r.onsuccess = function () {
+        var tx = r.result.transaction('kv', mode), st = tx.objectStore('kv'), q = fn(st);
+        tx.oncomplete = function () { res(q && q.result); r.result.close(); };
+        tx.onerror = function () { rej(tx.error); };
+      };
+    });
+  }
+  function remember(handle) { return idb('readwrite', function (st) { return st.put(handle, 'drive'); }).catch(function () { }); }
+  function remembered() { return idb('readonly', function (st) { return st.get('drive'); }).catch(function () { return null; }); }
+
   var Storage = {
     canWriteDirect: isAndroid || typeof root.showDirectoryPicker === 'function',
     isAndroid: isAndroid,
@@ -165,8 +182,34 @@
         return rolandView(new NativeRaw(name));
       }
       var h = await root.showDirectoryPicker({ id: 'rc500', mode: 'readwrite' });
+      var v = await rolandView(new FsaRaw(h));
+      remember(h);
+      return v;
+    },
+    /**
+     * Use the drive picked earlier, without asking where it is.
+     * Returns the view, null if there is none, or throws 'needs-permission' (Chromium wants a click first)
+     * or the read error when the drive isn't there (yet).
+     */
+    openRemembered: async function (ask) {
+      if (isAndroid) {
+        if (!Native.hasFolder()) return null;
+        var name = Native.currentFolder();
+        if (!name) { var nr = new Error('The drive is not there (yet)'); nr.code = 'not-ready'; throw nr; }
+        return rolandView(new NativeRaw(name));
+      }
+      if (!Storage.canWriteDirect) return null;
+      var h = await remembered();
+      if (!h) return null;
+      var perm = await h.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        if (!ask) { var e = new Error('needs-permission'); e.code = 'needs-permission'; throw e; }
+        perm = await h.requestPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') throw new Error('Permission to use the drive was not given');
+      }
       return rolandView(new FsaRaw(h));
     },
+    hasRemembered: async function () { return isAndroid ? !!Native.hasFolder() : !!(Storage.canWriteDirect && await remembered()); },
     /** Re-open the folder remembered by the Android app. */
     reopen: async function () {
       if (!isAndroid) return null;
@@ -275,8 +318,37 @@
     };
     self.connected = true; self.name = out.name;
     self.ports = outs.map(function (p) { return p.name; });
+    try { localStorage.setItem('rc500-midi-ok', '1'); } catch (e) { }
     return out.name;
   };
+  /**
+   * Connect by itself when that's possible without a permission prompt: always in the Android app,
+   * and in browsers once MIDI has been allowed for this page. Calls onFound(name) when connected.
+   */
+  Midi.prototype.autoConnect = async function (onFound) {
+    var self = this;
+    function tryNow() {
+      if (self.connected || self._autoBusy) return;
+      self._autoBusy = true;
+      self.connect().then(function (n) { self._autoBusy = false; onFound(n); }, function () { self._autoBusy = false; });
+    }
+    if (isAndroid) { root.__rcMidiAdded = tryNow; tryNow(); return; }
+    if (!navigator.requestMIDIAccess) return;
+    var allowed = false;
+    try { allowed = (await navigator.permissions.query({ name: 'midi', sysex: true })).state === 'granted'; } catch (e) { }
+    try { if (!allowed) allowed = localStorage.getItem('rc500-midi-ok') === '1'; } catch (e) { }
+    if (!allowed) return;
+    try {
+      var access = await navigator.requestMIDIAccess({ sysex: true });
+      var has = false;
+      access.outputs.forEach(function (p) { if (/RC-?500|BOSS|Roland/i.test(p.name)) has = true; });
+      access.addEventListener('statechange', function (ev) {
+        if (ev.port.type === 'output' && ev.port.state === 'connected' && /RC-?500|BOSS|Roland/i.test(ev.port.name)) setTimeout(tryNow, 300);
+      });
+      if (has) tryNow();
+    } catch (e) { }
+  };
+
   Midi.prototype.disconnect = function () {
     this.clockStop();
     if (isAndroid) { try { Native.midiClose(); } catch (e) { } }

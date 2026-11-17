@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '1.15';
+  var VERSION = '2.0';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -159,8 +159,16 @@
     });
     return h('span', { class: 'slider' }, r, out);
   }
+  /** A labelled control. A hint gets an ⓘ button that shows it below (works on touch screens too). */
   function row(label, ctrl, hint) {
-    return h('div', { class: 'row' }, h('label', { title: hint || '' }, label), h('div', { class: 'ctl' }, ctrl));
+    var r = h('div', { class: 'row' });
+    var lab = h('label', null, label);
+    if (hint) {
+      var hintEl = h('div', { class: 'hint' }, hint);
+      lab.appendChild(h('button', { class: 'ib', type: 'button', title: hint, 'aria-label': 'What is this?', onclick: function () { r.classList.toggle('showhint'); } }, 'i'));
+      add(r, [lab, h('div', { class: 'ctl' }, ctrl), hintEl]);
+    } else add(r, [lab, h('div', { class: 'ctl' }, ctrl)]);
+    return r;
   }
   function card(title, body, extra) { return h('section', { class: 'card ' + (extra || '') }, h('h3', null, title), body); }
 
@@ -180,15 +188,69 @@
 
   // ------------------------------------------------------------------ chrome (header + memory list)
   function refreshChrome() {
-    var src = S.store ? (S.store.writable ? '' : ' (read-only)') : '';
-    $('src').textContent = S.store ? '📁 ' + (S.store.name || 'RC-500') + src : '🏭 Factory data';
-    $('src').title = S.store ? (S.files ? 'Loaded ' + S.files.memName + ' / ' + S.files.sysName : '') : 'Open the pedal drive to edit your own memories';
-    $('midistat').textContent = S.midi.connected ? '🎹 ' + S.midi.name : '🎹 not connected';
-    $('midistat').className = 'chip ' + (S.midi.connected ? 'ok' : '');
-    $('btnUndo').disabled = !S.undo.length; $('btnRedo').disabled = !S.redo.length;
     var dirty = anyDirty();
+    var st = $('status');
+    st.innerHTML = '';
+    add(st, [
+      h('span', { class: 'dot ' + (S.midi.connected ? 'ok' : 'off') }),
+      h('span', { class: 'only-wide' }, S.midi.connected ? 'Pedal connected' : 'Pedal not connected'),
+      h('span', { class: 'sep only-wide' }, '·'),
+      h('span', { class: 'only-wide' }, S.store ? 'Memories from your pedal' : 'Factory settings'),
+      dirty ? h('span', { class: 'unsaved' }, 'unsaved') : null
+    ]);
+    st.title = (S.midi.connected ? 'Connected to ' + S.midi.name : 'The pedal is not connected over USB') + ' — ' +
+      (S.store ? 'editing the memories loaded from the pedal' + (S.files ? ' (' + S.files.memName + ')' : '') : 'editing factory settings, not your pedal') + '. Click for the Start page.';
+    $('memPick').innerHTML = '';
+    if (S.mem) add($('memPick'), [h('b', null, pad2(S.cur + 1)), ' ' + RC0.memName(blk()).trim(), h('span', { class: 'caret' }, '▾')]);
+    $('btnUndo').disabled = !S.undo.length; $('btnRedo').disabled = !S.redo.length;
     $('btnSave').classList.toggle('attention', dirty);
     renderMemList();
+  }
+
+  /** Small pop-up menu next to a button. items: [{label, onclick, disabled}] or null for a divider. */
+  function popMenu(anchor, items) {
+    var back = h('div', { class: 'menu-back', onclick: function (e) { if (e.target === back) back.remove(); } });
+    var m = h('div', { class: 'menu', role: 'menu' }, items.map(function (it) {
+      if (!it) return h('hr');
+      return h('button', { role: 'menuitem', disabled: it.disabled, onclick: function () { back.remove(); it.onclick(); } }, it.label);
+    }));
+    back.appendChild(m); document.body.appendChild(back);
+    var r = anchor.getBoundingClientRect();
+    var left = Math.min(window.innerWidth - m.offsetWidth - 8, Math.max(8, r.right - m.offsetWidth));
+    var top = r.bottom + 6;
+    if (top + m.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - m.offsetHeight - 6);
+    m.style.left = left + 'px'; m.style.top = top + 'px';
+  }
+
+  function moreMenu() {
+    var t = localStorage.getItem('rc500-theme') || 'auto';
+    popMenu($('btnMore'), [
+      { label: '↶ Undo', disabled: !S.undo.length, onclick: function () { undoRedo(S.undo, S.redo, true); } },
+      { label: '↷ Redo', disabled: !S.redo.length, onclick: function () { undoRedo(S.redo, S.undo, false); } },
+      null,
+      { label: '⇄ Remote control', onclick: function () { go('remote'); } },
+      { label: '? Help', onclick: function () { go('about'); } },
+      null,
+      { label: '📁 Open a folder or backup…', onclick: openFolder },
+      { label: '⬇ Backup of the pedal’s data', disabled: !S.store, onclick: function () { backup().catch(errToast); } },
+      { label: '🏭 Start from factory settings', onclick: openFactory },
+      null,
+      { label: 'Theme: ' + t + ' → ' + ({ auto: 'light', light: 'dark', dark: 'auto' })[t], onclick: function () {
+        try { localStorage.setItem('rc500-theme', ({ auto: 'light', light: 'dark', dark: 'auto' })[t]); } catch (e) { } applyTheme();
+      } }
+    ]);
+  }
+  function go(p) { S.page = p; try { localStorage.setItem('rc500-page', p); } catch (e) { } render(); window.scrollTo(0, 0); }
+
+  /** A dialog that shows progress text; returns {set, close}. */
+  function busy(text) {
+    var msg = h('p', null, text);
+    var back = h('div', { class: 'modal-back' }, h('div', { class: 'modal busy' }, h('div', { class: 'spinner' }), msg));
+    document.body.appendChild(back);
+    return {
+      set: function (t) { msg.textContent = t; }, close: function () { back.remove(); },
+      hide: function () { back.style.display = 'none'; }, show: function () { back.style.display = ''; }
+    };
   }
 
   function renderMemList() {
@@ -217,7 +279,7 @@
   function selectMemory(i, fromPedal, noRender) {
     S.cur = i;
     if ((S.sendPcOnSelect || S.page === 'direct') && S.midi.connected && !fromPedal) { try { midiSend([0xC0 | rxCh(), i]); } catch (e) { errToast(e); } }
-    if (S.page !== 'memory' && S.page !== 'remote' && S.page !== 'loops' && S.page !== 'direct') S.page = 'memory';
+    if (S.page === 'start' || S.page === 'about') S.page = 'memory';
     if (window.RCDirect) RCDirect.onMemory();
     if (noRender) { renderMemList(); return; }
     render();
@@ -232,7 +294,7 @@
     var main = $('main');
     var st = main.scrollTop;
     main.innerHTML = '';
-    var page = { memory: pageMemory, system: pageSystem, loops: pageLoops, remote: pageRemote, about: pageAbout, direct: function () { return RCDirect.page(API); } }[S.page];
+    var page = { start: pageStart, memory: pageMemory, system: pageSystem, loops: pageLoops, remote: pageRemote, about: pageAbout, direct: function () { return RCDirect.page(API); } }[S.page] || pageStart;
     add(main, page());
     main.scrollTop = st;
     renderMidiLog();
@@ -283,7 +345,20 @@
             commit(); render();
           }
         })),
-      h('div', { class: 'tools' },
+      h('button', { class: 'iconbtn only-narrow', 'aria-label': 'Memory actions', onclick: function (e) {
+        popMenu(e.currentTarget, [
+          { label: '⧉ Copy to other memories…', onclick: copyDialog },
+          { label: 'Copy', onclick: function () { S.clip = RC0.cloneSections(b); toast('Memory ' + (i + 1) + ' copied'); } },
+          { label: 'Paste…', disabled: !S.clip, onclick: pasteDialog },
+          { label: '⇄ Swap with…', onclick: swapDialog },
+          null,
+          { label: '⬇ Save as preset file', onclick: function () { exportPreset().catch(errToast); } },
+          { label: '⬆ Load a preset file', onclick: function () { importPreset().catch(errToast); } },
+          null,
+          { label: 'Initialize (factory settings)', onclick: resetMemory }
+        ]);
+      } }, '⋯'),
+      h('div', { class: 'tools only-wide' },
         h('button', { onclick: copyDialog, title: 'Copy this memory to other memories' }, '⧉ Copy to…'),
         h('button', { onclick: function () { S.clip = RC0.cloneSections(b); toast('Memory ' + (i + 1) + ' copied'); render(); } }, 'Copy'),
         h('button', { disabled: !S.clip, onclick: pasteDialog }, 'Paste…'),
@@ -302,33 +377,34 @@
     var assigns = [];
     for (var a = 1; a <= 8; a++) assigns.push(assignRow(a));
 
-    var sysPref = { Pedal1: 'Pdl1', Pedal2: 'Pdl2', Pedal3: 'Pdl3', Ctl1: 'Ctl1', Ctl2: 'Ctl2', Exp: 'Exp' };
+    var sysPref = { Pedal1: 'Pdl1', Pedal2: 'Pdl2', Pedal3: 'Pdl3', Ctl1: 'Ctl1', Ctl2: 'Ctl2', Exp: 'Exp' }, anySys = false;
     function ctlRow(label, key, list) {
       var usesSys = sget('PREF', sysPref[key]) === 1;
       var f = M('CTL', key);
-      var s = sel(list, f.v, f.set);
-      return row(label, [s, usesSys ? h('span', { class: 'note', title: 'SYSTEM > PREFERENCE is set to SYSTEM for this controller' }, 'system: ' + list[sget('CTL', key)]) : null]);
+      var s = sel(RCNames.options(list), f.v, f.set);
+      if (usesSys) { s.classList.add('dim'); anySys = true; }
+      return row(label, [s, usesSys ? h('span', { class: 'note warnnote', title: 'This switch follows the system setting: ' + RCNames.plain(list[sget('CTL', key)]) }, 'uses system: ' + RCNames.plain(list[sget('CTL', key)])) : null]);
     }
 
     return [head, h('div', { class: 'grid' },
       trackCard(1), trackCard(2),
       card('Record', [
-        mSel('Dub mode', 'MASTER', 'DubMode', L.dubMode),
-        mSel('Rec action', 'MASTER', 'RecAction', L.recAction, 'Order of record/play/overdub when you press REC/PLY'),
-        (function () { var f = M('MASTER', 'RecQuantize'); return row('Quantize', sel(L.quantize, f.v ? 1 : 0, function (v) { f.set(v ? 2 : 0); })); })(),
-        mChk('Auto rec', 'MASTER', 'AutoRec', 'Start recording when you start playing'),
-        (function () { var f = M('MASTER', 'AutoRecSens'); return row('A.rec sens', slider(f.v, 1, 100, f.set)); })(),
-        mSel('A.rec source', 'MASTER', 'AutoRecSrc', L.recSrc),
+        mSel('Dub mode', 'MASTER', 'DubMode', L.dubMode, 'OVERDUB layers new playing on top. REPLACE records over what was there, like a delay that keeps changing.'),
+        mSel('Rec action', 'MASTER', 'RecAction', L.recAction, 'What REC/PLAY does after a recording: go straight to overdubbing, or to playback first.'),
+        (function () { var f = M('MASTER', 'RecQuantize'); return row('Quantize', sel(L.quantize, f.v ? 1 : 0, function (v) { f.set(v ? 2 : 0); }), 'MEASURE moves the start and end of a recording to the nearest measure when the rhythm or another synced track is running.'); })(),
+        mChk('Auto record', 'MASTER', 'AutoRec', 'REC/PLAY waits, and recording starts when you start playing.'),
+        (function () { var f = M('MASTER', 'AutoRecSens'); return row('Auto rec level', slider(f.v, 1, 100, f.set), 'How loud you must play before auto record starts (higher = reacts to softer playing).'); })(),
+        mSel('Auto rec input', 'MASTER', 'AutoRecSrc', L.recSrc, 'Which input auto record listens to.'),
         (function () { var f = M('MASTER', 'LpLen'); return row('Loop length', [num(f.v, 0, 25362, f.set), h('span', { class: 'note' }, f.v ? 'measures' : 'AUTO')], '0 = AUTO (length of the first recorded phrase)'); })()
       ]),
       card('Play', [
         row('Tempo', [num(tempo.v, 400, 3000, tempo.set, 0.1, 10), h('span', { class: 'note' }, 'BPM'), h('button', { class: 'small', onclick: tapTempo, title: 'Tap repeatedly' }, 'Tap')]),
         mLvl('Memory level', 'MASTER', 'Level', 200),
-        mSel('Play mode', 'MASTER', 'PlayMode', L.playMode),
-        mSel('Single change', 'MASTER', 'SinglPlayeChange', L.singleChange),
-        mSel('Fade time', 'MASTER', 'FadeTime', L.fadeTime),
-        mSel('All start', 'MASTER', 'AllStart', L.allStart, 'Which track starts on MIDI start'),
-        mSel('Track chain', 'MASTER', 'TrackChain', L.trkChain)
+        mSel('Play mode', 'MASTER', 'PlayMode', L.playMode, 'MULTI plays both tracks together. SINGLE plays one track at a time.'),
+        mSel('Track change', 'MASTER', 'SinglPlayeChange', L.singleChange, 'In SINGLE play mode: switch to the other track at once, or when the loop ends.'),
+        mSel('Fade time', 'MASTER', 'FadeTime', L.fadeTime, 'Length of fade in/out for tracks set to start with FADE IN or stop with FADE OUT.'),
+        mSel('MIDI start plays', 'MASTER', 'AllStart', L.allStart, 'Which tracks start when a MIDI Start message arrives.'),
+        mSel('Track chain', 'MASTER', 'TrackChain', L.trkChain, 'PARALLEL: both tracks go to the outputs. SERIES: track 1 is fed into track 2.')
       ]),
       card('Loop FX', [
         mChk('Loop FX on', 'LOOPFX', 'Sw'),
@@ -364,17 +440,21 @@
         mSel('Tone high', 'RHYTHM', 'ToneHigh', L.tone)
       ]),
       card('Pedals & controllers', [
-        ctlRow('PDL1 REC/PLAY', 'Pedal1', L.pdlCtl),
-        ctlRow('PDL2 STOP', 'Pedal2', L.pdlCtl),
-        ctlRow('PDL3 TRACK SEL', 'Pedal3', L.pdlCtl),
-        ctlRow('CTL1 footswitch', 'Ctl1', L.pdlCtl),
-        ctlRow('CTL2 footswitch', 'Ctl2', L.pdlCtl),
-        ctlRow('EXP pedal', 'Exp', L.exp),
-        h('p', { class: 'info' }, 'These per-memory functions are only used when SYSTEM › Preference is set to MEMORY for that controller.')
+        ctlRow('REC/PLAY switch', 'Pedal1', L.pdlCtl),
+        ctlRow('STOP switch', 'Pedal2', L.pdlCtl),
+        ctlRow('TRACK SELECT switch', 'Pedal3', L.pdlCtl),
+        ctlRow('Footswitch CTL1', 'Ctl1', L.pdlCtl),
+        ctlRow('Footswitch CTL2', 'Ctl2', L.pdlCtl),
+        ctlRow('Expression pedal', 'Exp', L.exp),
+        h('p', { class: 'info' }, 'What each switch does in this memory. The pedal’s own short name is in [brackets].'),
+        (function () {
+          var any = ['Pdl1', 'Pdl2', 'Pdl3', 'Ctl1', 'Ctl2', 'Exp'].some(function (k) { return sget('PREF', k) === 1; });
+          return any ? h('p', { class: 'info warnnote' }, 'Switches marked “uses system” follow the same function in every memory. To use this memory’s choice, set them to MEMORY under ',
+            h('a', { href: '#', onclick: function (e) { e.preventDefault(); go('system'); } }, 'System › Switch functions from'), '.') : null;
+        })()
       ]),
-      card('Assign 1–8', h('div', { class: 'assigns' },
-        h('div', { class: 'ahead' }, h('span'), h('span', null, 'Source'), h('span', null, 'Mode'), h('span', null, 'Target'), h('span', null, 'Min'), h('span', null, 'Max')),
-        assigns), 'wide'),
+      card('Assign 1–8', [h('p', { class: 'info' }, 'Extra controls: when something happens (a switch, a pedal, a MIDI CC…), change a function or setting.'),
+        h('div', { class: 'assigns' }, assigns)], 'wide'),
       card('All values (advanced)', rawEditor('mem', S.cur), 'wide raw')
     )];
   }
@@ -385,21 +465,21 @@
     var rng = P.targetRange(tgt, { beat: beatIdx(), fxType: mget('LOOPFX', 'FxType') });
     function mm(key) {
       var f = M(sec, key);
-      if (!rng) return h('span', { class: 'note' }, '—');
+      if (!rng) return null;
       if (rng.length > 300) return h('span', { class: 'ctl' }, num(f.v, 0, rng.length - 1, f.set), h('span', { class: 'note' }, rng[f.v] !== undefined ? '= ' + rng[f.v] : ''));
       return sel(rng, f.v, f.set);
     }
     return h('div', { class: 'arow' + (on ? '' : ' off') },
-      h('span', null, h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: !!on, onchange: function (e) { mset(sec, 'Sw', e.target.checked ? 1 : 0); render(); } }), ' ' + a)),
-      sel(L.assignSource, mget(sec, 'Source'), function (v) { mset(sec, 'Source', v); render(); }),
-      sel(L.srcMode, mget(sec, 'SourceMode'), function (v) { mset(sec, 'SourceMode', v); render(); }),
-      sel(L.assignTarget, tgt, function (v) {
+      h('label', { class: 'anum' }, h('input', { type: 'checkbox', checked: !!on, onchange: function (e) { mset(sec, 'Sw', e.target.checked ? 1 : 0); render(); } }), ' ' + a),
+      h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'When'), sel(RCNames.options(L.assignSource, 'source'), mget(sec, 'Source'), function (v) { mset(sec, 'Source', v); render(); }),
+        sel([[0, 'while held (MOMENT)'], [1, 'on/off per press (TOGGLE)']], mget(sec, 'SourceMode'), function (v) { mset(sec, 'SourceMode', v); render(); })),
+      h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'Does'), sel(RCNames.options(L.assignTarget), tgt, function (v) {
         begin(); mset(sec, 'Target', v);
         var r = P.targetRange(v, { beat: beatIdx(), fxType: mget('LOOPFX', 'FxType') });
         mset(sec, 'TargetMin', 0); mset(sec, 'TargetMax', r ? r.length - 1 : 1);
         commit(); render();
-      }),
-      mm('TargetMin'), mm('TargetMax'));
+      })),
+      rng ? h('div', { class: 'afield' }, h('span', { class: 'alabel' }, 'From'), mm('TargetMin'), h('span', { class: 'alabel' }, 'to'), mm('TargetMax')) : null);
   }
 
   function rawEditor(db, bi) {
@@ -435,46 +515,47 @@
         ext.push(row('EXT' + e, [sel(L.extVal, mn.v, mn.set), ' – ', sel(L.extVal, mx.v, mx.set)]));
       })(e);
     }
-    function sCtl(label, key, list) { var f = Sy('CTL', key); return row(label, sel(list, f.v, f.set)); }
+    function sCtl(label, key, list) { var f = Sy('CTL', key); return row(label, sel(RCNames.options(list), f.v, f.set)); }
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'SYSTEM')),
       h('div', { class: 'tools' }, h('button', { class: 'danger', onclick: resetSystem }, 'Initialize system'))),
     h('div', { class: 'grid' },
       card('General', [
         sSel('Display contrast', 'SETUP', 'Contrast', L.contrast),
-        sSel('Display mode', 'SETUP', 'DisplayMode', L.dispMode),
-        sSel('Undo/redo', 'SETUP', 'UndoRedo', L.undoRedo, 'Undo/redo while holding the switch, or when you release it'),
-        sSel('Memory at power-on', 'SETUP', 'MemoryNumber', P.range(1, 99, pad2), 'The memory selected when the pedal was last saved')
+        sSel('Display shows', 'SETUP', 'DisplayMode', L.dispMode, 'What the display shows while recording and playing.'),
+        sSel('Undo/redo', 'SETUP', 'UndoRedo', L.undoRedo, 'For switches with “hold: undo”: undo while still holding (HOLD) or when you let go (RELEASE).'),
+        sSel('Current memory', 'SETUP', 'MemoryNumber', P.range(1, 99, pad2), 'The memory the pedal had selected when its settings were last saved.')
       ]),
-      card('Preference', [
-        sSel('PDL1 pref', 'PREF', 'Pdl1', L.pref), sSel('PDL2 pref', 'PREF', 'Pdl2', L.pref), sSel('PDL3 pref', 'PREF', 'Pdl3', L.pref),
-        sSel('CTL1 pref', 'PREF', 'Ctl1', L.pref), sSel('CTL2 pref', 'PREF', 'Ctl2', L.pref), sSel('EXP pref', 'PREF', 'Exp', L.pref),
-        h('p', { class: 'info' }, 'MEMORY: each memory’s own functions. SYSTEM: the functions below for all memories.')
+      card('Switch functions from', [
+        sSel('REC/PLAY switch', 'PREF', 'Pdl1', L.pref), sSel('STOP switch', 'PREF', 'Pdl2', L.pref), sSel('TRACK SELECT switch', 'PREF', 'Pdl3', L.pref),
+        sSel('Footswitch CTL1', 'PREF', 'Ctl1', L.pref), sSel('Footswitch CTL2', 'PREF', 'Ctl2', L.pref), sSel('Expression pedal', 'PREF', 'Exp', L.pref),
+        h('p', { class: 'info' }, 'MEMORY: each memory decides what the switch does (Memory page). SYSTEM: the same function in every memory (below).')
       ]),
-      card('System pedal functions', [
-        sCtl('PDL1 REC/PLAY', 'Pedal1', L.pdlCtl), sCtl('PDL2 STOP', 'Pedal2', L.pdlCtl), sCtl('PDL3 TRACK SEL', 'Pedal3', L.pdlCtl),
-        sCtl('CTL1 footswitch', 'Ctl1', L.pdlCtl), sCtl('CTL2 footswitch', 'Ctl2', L.pdlCtl), sCtl('EXP pedal', 'Exp', L.exp)
+      card('Switch functions (system)', [
+        sCtl('REC/PLAY switch', 'Pedal1', L.pdlCtl), sCtl('STOP switch', 'Pedal2', L.pdlCtl), sCtl('TRACK SELECT switch', 'Pedal3', L.pdlCtl),
+        sCtl('Footswitch CTL1', 'Ctl1', L.pdlCtl), sCtl('Footswitch CTL2', 'Ctl2', L.pdlCtl), sCtl('Expression pedal', 'Exp', L.exp),
+        h('p', { class: 'info' }, 'Used in all memories for the switches set to SYSTEM under Preference.')
       ]),
       card('MIDI', [
-        sSel('Rx ctl channel', 'MIDI', 'RxCtlCh', L.ch16),
-        sChk('Omni', 'MIDI', 'Omni', 'Receive on all channels'),
-        sSel('Rx note channel', 'MIDI', 'RxNoteCh', L.ch16, 'Channel for notes that play the drum sounds'),
-        sSel('Tx channel', 'MIDI', 'TxCh', L.txCh),
-        sSel('Sync clock', 'MIDI', 'Sync', L.syncClock),
-        sChk('Clock out', 'MIDI', 'ClkOut'),
-        sSel('Sync start', 'MIDI', 'SyncStart', L.syncStart),
-        sChk('PC out', 'MIDI', 'PcOut', 'Send program change when you change memory'),
-        sSel('MIDI thru', 'MIDI', 'MidiThru', L.thru),
-        sSel('USB thru', 'MIDI', 'UsbThru', L.thru)
+        sSel('Receive channel', 'MIDI', 'RxCtlCh', L.ch16, 'MIDI channel the pedal listens on for memory changes and CC messages. The editor sends on this channel.'),
+        sChk('Listen on all channels', 'MIDI', 'Omni', 'OMNI: react to messages on every MIDI channel.'),
+        sSel('Drum notes channel', 'MIDI', 'RxNoteCh', L.ch16, 'MIDI notes on this channel play the RC-500’s drum sounds.'),
+        sSel('Send channel', 'MIDI', 'TxCh', L.txCh, 'Channel the pedal sends on. RX CTL = the same as the receive channel.'),
+        sSel('Follow tempo from', 'MIDI', 'Sync', L.syncClock, 'AUTO follows MIDI clock from the MIDI IN jack or USB when there is one (needed for the editor’s tempo), otherwise the memory tempo.'),
+        sChk('Send MIDI clock', 'MIDI', 'ClkOut', 'Send the tempo as MIDI clock (the editor shows it in Direct mode).'),
+        sSel('MIDI start starts', 'MIDI', 'SyncStart', L.syncStart, 'What starts when a MIDI Start message arrives.'),
+        sChk('Send memory changes', 'MIDI', 'PcOut', 'Send a program change when you change memory (the editor follows the pedal with it).'),
+        sSel('Pass on MIDI IN to', 'MIDI', 'MidiThru', L.thru, 'Where messages arriving at MIDI IN are passed on.'),
+        sSel('Pass on USB MIDI to', 'MIDI', 'UsbThru', L.thru, 'Where MIDI messages arriving over USB are passed on.')
       ]),
-      card('Extent (memory range)', [sSel('Active extent', 'SETUP', 'ExtentCh', L.extent)].concat(ext)),
+      card('Memory ranges (Extent)', [sSel('Active range', 'SETUP', 'ExtentCh', L.extent, 'MEMORY INC/DEC only step through the memories in the active range. Up to five ranges (EXT1–5).')].concat(ext)),
       card('Input / output', [
-        sChk('Phantom power', 'INPUT', 'Phantom'),
-        sSel('MIC IN out', 'INPUT', 'MicOut', L.micOut),
-        sSel('INST IN out', 'INPUT', 'InstOut', L.instOut),
-        sSel('Rhythm out', 'INPUT', 'RhythmOut', L.rhyOut),
-        (function () { var f = Sy('INPUT', 'MicNs'); return row('MIC IN NS', slider(f.v, 0, 100, f.set)); })(),
-        (function () { var f = Sy('INPUT', 'InstNs'); return row('INST IN NS', slider(f.v, 0, 100, f.set)); })(),
-        sSel('Peak source', 'INPUT', 'Indicator', L.peak)
+        sChk('Phantom power', 'INPUT', 'Phantom', 'Power for condenser microphones on MIC IN.'),
+        sSel('Mic goes to', 'INPUT', 'MicOut', L.micOut, 'Which outputs the live mic sound goes to.'),
+        sSel('Instrument goes to', 'INPUT', 'InstOut', L.instOut, 'Which outputs the live instrument sound goes to.'),
+        sSel('Rhythm goes to', 'INPUT', 'RhythmOut', L.rhyOut, 'Which outputs the rhythm goes to. LOOP records drum notes from MIDI into a track.'),
+        (function () { var f = Sy('INPUT', 'MicNs'); return row('Mic noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the mic while recording.'); })(),
+        (function () { var f = Sy('INPUT', 'InstNs'); return row('Instrument noise gate', slider(f.v, 0, 100, f.set), 'Noise suppressor on the instrument inputs while recording.'); })(),
+        sSel('INPUT light shows', 'INPUT', 'Indicator', L.peak, 'Which signal the INPUT level light follows.')
       ]),
       card('All values (advanced)', rawEditor('sys', 0), 'wide raw'))];
   }
@@ -650,6 +731,7 @@
     try {
       await S.midi.connect();
       toast('Connected to ' + S.midi.name);
+      afterConnect();
       if (!S.midi.sysexOk) toast('SysEx was not allowed: storage mode switching is unavailable', 'err');
     } catch (e) { errToast(e); }
     render();
@@ -680,13 +762,9 @@
       if (!res.ok) throw new Error(res.last === 2 ? 'The pedal keeps answering “busy”. Make sure it is stopped and on its play screen, or use MENU › STORAGE on the pedal.'
         : res.last === -1 ? 'The pedal did not answer. Check the USB cable, or use MENU › STORAGE on the pedal.'
         : 'The pedal did not switch. Try again, or use MENU › STORAGE on the pedal.');
-      if (on) {
-        toast('Storage mode on — the “BOSS RC-500” drive appears in a few seconds');
-        if (!S.store) setTimeout(function () {
-          dialog('Open the pedal drive', h('p', null, 'When the BOSS RC-500 drive has appeared, open it (or its ROLAND folder).'),
-            [{ label: 'Later' }, { label: 'Open…', primary: true, onclick: openFolder }]);
-        }, 1500);
-      } else { toast('Storage mode off — the pedal reloads its data'); S.loops = null; }
+      S.storage = on;
+      if (on) toast('Storage mode on — the “BOSS RC-500” drive appears in a few seconds');
+      else { toast('Storage mode off — the pedal reloads its data'); S.autoStorage = false; }
     } catch (e) { errToast(e); }
     render();
   }
@@ -756,6 +834,72 @@
     var rng = h('input', { type: 'range', min: 0, max: 127, value: 0, disabled: !connected, oninput: function () { midiSend([0xB0 | ch, cc, +rng.value]); } });
     return h('div', { class: 'ccpad' }, h('span', { class: 'ccn' }, 'CC#' + cc), btn, rng);
   }
+
+  function afterConnect() {
+    // Is the pedal in storage mode right now?
+    if (S.midi.sysexOk) S.midi.queryEditMode(800).then(function (v) { if (v >= 0) { S.storage = v === 1; refreshChrome(); if (S.page === 'start') render(); } });
+    refreshChrome(); if (S.page === 'start' || S.page === 'direct' || S.page === 'remote') render();
+  }
+
+  // ------------------------------------------------------------------ Start page: guided setup with live status
+  function pageStart() {
+    var conn = S.midi.connected, mid = !!navigator.requestMIDIAccess || PF.isAndroid;
+    var direct = PF.Storage.canWriteDirect, autoStorage = conn && S.midi.sysexOk && direct;
+    function step(n, title, done, body) {
+      return h('section', { class: 'card step' + (done ? ' done' : '') },
+        h('div', { class: 'stephead' }, h('span', { class: 'stepno' }, done ? '✓' : String(n)), h('h3', null, title)), body);
+    }
+    var prepared = 0;
+    if (S.origMem && window.RCDirect) for (var i = 0; i < 99; i++) if (RCDirect.isPrepared(i)) prepared++;
+
+    return h('div', { class: 'start' },
+      h('div', { class: 'hero' }, h('h2', null, 'BOSS RC-500 Editor'),
+        h('p', null, 'Edit your RC-500’s memories, manage its loops and play it from the screen — through the pedal’s own USB port.')),
+      step(1, 'Connect the pedal', conn, [
+        conn ? h('p', { class: 'ok' }, 'Connected to ' + S.midi.name + (S.storage ? ' — the pedal is in storage mode.' : '.'))
+          : h('ul', { class: 'checklist' },
+            h('li', null, 'Power the RC-500 (adapter or batteries). It only switches on with a cable in ', h('b', null, 'OUTPUT A/MONO'), '.'),
+            h('li', null, 'Connect its USB port with a cable that carries data' + (PF.isAndroid ? ' (USB-C/OTG on the phone).' : '.')),
+            !PF.isAndroid ? h('li', null, /Firefox/.test(navigator.userAgent) ? 'Firefox asks to add a small “site permission” for MIDI — allow it, including SysEx.' : 'Your browser asks to allow MIDI devices — allow it.') : null),
+        !mid ? h('p', { class: 'warn' }, 'This browser has no USB MIDI. Use Chrome, Edge or Firefox (or the Android app).') : null,
+        h('div', { class: 'btnrow' },
+          conn ? h('button', { onclick: function () { S.midi.disconnect(); render(); } }, 'Disconnect')
+            : h('button', { class: 'primary', disabled: !mid, onclick: connectMidi }, 'Connect'),
+          S.storage ? h('button', { onclick: function () { leaveStorage().catch(errToast); } }, 'Leave storage mode') : null),
+        conn ? null : h('p', { class: 'info' }, 'Once allowed, the editor connects by itself the next time.')
+      ]),
+      step(2, 'Load your memories', !!S.store, [
+        S.store ? h('p', { class: 'ok' }, 'Loaded from the pedal' + (S.files ? ' (' + S.files.memName + ')' : '') + '.' + (S.store.writable ? '' : ' Read-only in this browser.'))
+          : h('p', null, 'The editor shows factory settings until you load your pedal’s memories.'),
+        h('p', { class: 'info' }, autoStorage
+          ? 'The pedal is read through its USB drive (“storage mode”). The editor switches it on and off for you; the pedal must be stopped.'
+          : conn && direct ? 'The pedal is read through its USB drive (“storage mode”).'
+            : 'The pedal is read through its USB drive (“storage mode”). ' + MANUAL_STORAGE),
+        h('div', { class: 'btnrow' },
+          h('button', { class: S.store ? '' : 'primary', onclick: function () { loadFromPedal(); } }, S.store ? '⤓ Load again' : '⤓ Load from pedal'),
+          !S.store ? h('button', { onclick: openFactory }, 'Work without the pedal') : null)
+      ]),
+      step(3, 'Edit and save', false, [
+        h('p', null, 'Pick a memory in the list' + (window.innerWidth < 820 ? ' (tap the memory name at the top)' : '') + ' and change it on the ', link('memory', 'Memory'), ' page; pedal-wide settings are under ',
+          link('system', 'System'), '. Changes stay in the editor until you save.'),
+        h('p', { class: 'info' }, direct
+          ? (autoStorage ? 'Save to pedal writes the changes and switches the pedal back to play mode. It keeps the previous version as a fallback.'
+            : 'Save to pedal writes to the drive while the pedal is in storage mode. It keeps the previous version as a fallback.')
+          : 'This browser can’t write to the drive: Save gives you the changed file to copy into ROLAND/DATA on the pedal. Chrome, Edge or the Android app save directly.'),
+        h('div', { class: 'btnrow' }, h('button', { disabled: !S.store, onclick: function () { backup().catch(errToast); } }, '⬇ Make a backup'))
+      ]),
+      step(4, 'Play the pedal from the screen (optional)', prepared > 0 && conn, [
+        h('p', null, 'The ', link('direct', 'Direct'), ' page is the pedal’s panel on screen. The RC-500 only listens to the screen through a memory’s ASSIGN slots, so prepare the memories you want to use once and save them to the pedal.'),
+        h('p', { class: prepared ? 'ok' : 'info' }, S.store ? prepared + ' of 99 memories are prepared on the pedal.' : 'Load your memories first to see which are prepared.'),
+        h('div', { class: 'btnrow' },
+          h('button', { onclick: function () { go('direct'); setTimeout(function () { RCDirect.setup(); }, 50); } }, 'Prepare memories…'),
+          h('button', { onclick: function () { go('direct'); } }, 'Open Direct'))
+      ]),
+      h('p', { class: 'info center' }, 'Not affiliated with BOSS/Roland. ', link('about', 'Help and details'), ' · ',
+        h('a', { href: 'https://github.com/jonsolberg/bossrc500editor', target: '_blank', rel: 'noopener' }, 'Source'), ' · ',
+        h('a', { href: 'https://ko-fi.com/jonsolberg', target: '_blank', rel: 'noopener' }, '🍺 Buy me a beer')));
+  }
+  function link(page, text) { return h('a', { href: '#', onclick: function (e) { e.preventDefault(); go(page); } }, text); }
 
   function pageAbout() {
     var fsa = typeof window.showDirectoryPicker === 'function';
@@ -919,11 +1063,97 @@
     });
   }
 
+  /** Firefox and other browsers without folder access: read the folder through a file input. */
+  function pickViaInput() {
+    return new Promise(function (res, rej) {
+      var inp = $('dirinput');
+      inp.onchange = function (e) {
+        var files = e.target.files; inp.value = '';
+        if (!files.length) { rej(new Error('Cancelled')); return; }
+        PF.Storage.fromFileList(files).then(res, rej);
+      };
+      inp.click();
+    });
+  }
+
+  /** Ask the user to select the drive (a click lets the browser show its folder picker). */
+  function askForDrive(intro, needPerm) {
+    return new Promise(function (res, rej) {
+      var how = PF.Storage.canWriteDirect
+        ? (PF.isAndroid ? 'In the picker, open the BOSS RC-500 USB drive and tap “Use this folder”.' : 'In the window that opens, choose the drive called BOSS RC-500.')
+        : 'Choose the drive called BOSS RC-500. Firefox asks whether to “upload” the files — they stay on your computer, the editor only reads them.';
+      dialog(needPerm ? 'Allow access to the pedal' : 'Select the pedal’s drive', h('div', null, intro,
+        h('p', { class: 'info' }, needPerm ? 'Your browser asks once per visit before the editor may use the drive again.' : how)),
+        [{ label: 'Cancel', onclick: function () { rej(new Error('Cancelled')); } },
+        { label: needPerm ? 'Allow' : 'Select the drive', primary: true, onclick: function () {
+          var p = needPerm ? PF.Storage.openRemembered(true) : PF.Storage.canWriteDirect ? PF.Storage.pick() : pickViaInput();
+          p.then(res, rej);
+        } }]);
+    });
+  }
+
+  var MANUAL_STORAGE = 'On the pedal: press MENU, choose STORAGE, turn the knob to CONNECTING and press it. The display shows “CONNECTING…” and a drive called BOSS RC-500 appears on the computer.';
+
+  /**
+   * Get the pedal's drive: the remembered one if it is there, otherwise switch the pedal to storage mode
+   * over USB (where the browser allows it), wait for the drive, and ask only when we have to.
+   */
+  async function getDrive(b) {
+    var needPerm = false, v;
+    async function reachable(view) { var l = await view.list('DATA'); return l.length > 0; }
+    try { v = await PF.Storage.openRemembered(false); if (v && await reachable(v)) return v; }
+    catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
+
+    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect;
+    if (auto) {
+      b.set('Switching the pedal to storage mode…');
+      var on = (await S.midi.queryEditMode()) === 1;
+      if (!on) { var r = await S.midi.setEditMode(true); on = r.ok; if (on) S.autoStorage = true; }
+      if (on) {
+        S.storage = true;
+        var remembered = await PF.Storage.hasRemembered();
+        b.set('Waiting for the BOSS RC-500 drive…');
+        for (var t = 0; t < 25 && remembered && !needPerm; t++) {
+          try { v = await PF.Storage.openRemembered(false); if (v && await reachable(v)) return v; }
+          catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
+          await PF.sleep(1000);
+        }
+        if (!remembered) await PF.sleep(3000); // give the computer a moment to mount the new drive
+      } else auto = false;
+    }
+    b.hide();
+    try {
+      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' : MANUAL_STORAGE), needPerm);
+    } finally { b.show(); }
+  }
+
+  /** Read the memories from the pedal, switching storage mode on when needed. */
+  async function loadFromPedal() {
+    if (!(await confirmDiscard())) return;
+    var b = busy('Looking for the pedal…');
+    try {
+      var view = await getDrive(b);
+      b.set('Reading the memories…');
+      await loadFrom(view);
+      b.close();
+      if (S.page === 'start') render();
+    } catch (e) { b.close(); if (e.name !== 'AbortError' && e.message !== 'Cancelled') errToast(e); }
+  }
+
+  /** Leave storage mode so the pedal reloads its data and can play again. */
+  async function leaveStorage(quiet) {
+    if (!S.midi.connected) { if (!quiet) toast('Leave storage mode on the pedal (press EXIT).'); S.storage = false; render(); return; }
+    var r = await S.midi.setEditMode(false);
+    S.storage = false; S.autoStorage = false;
+    if (!quiet) toast(r.ok ? 'The pedal is back in play mode and has reloaded its memories' : 'Leave storage mode on the pedal (press EXIT)', r.ok ? '' : 'err');
+    S.loops = S.loops; render();
+  }
+
   async function openFolder() {
     if (!(await confirmDiscard())) return;
     try {
       if (PF.Storage.canWriteDirect) await loadFrom(await PF.Storage.pick());
-      else $('dirinput').click();
+      else await loadFrom(await pickViaInput());
     } catch (e) { if (e.name !== 'AbortError' && e.message !== 'Cancelled') errToast(e); }
   }
   async function openFactory() {
@@ -947,14 +1177,42 @@
       if (sysChanged) list.push(['SYSTEM', S.sys, f.sys]);
       return new Promise(function (res) {
         dialog('Save to the pedal', h('div', null,
-          h('p', null, 'Write ' + list.map(function (x) { return x[0] + x[2].write + '.RC0'; }).join(' and ') + ' to ' + (S.store.name || 'the pedal') + '?'),
-          h('p', { class: 'info' }, 'The previous copy (' + list.map(function (x) { return x[0] + x[2].load + '.RC0'; }).join(', ') + ') stays untouched as a fallback. Make a backup if you have not already.')),
-          [{ label: 'Cancel', onclick: function () { res(); } }, { label: '⬇ Backup first', onclick: function () { backup(); return false; } }, {
+          h('p', null, 'Write your changes to the pedal?'),
+          h('p', { class: 'info' }, S.midi.connected && S.midi.sysexOk
+            ? 'The editor switches the pedal to storage mode, writes, checks the result and switches back. The pedal must be stopped.'
+            : 'The pedal must be in storage mode (MENU › STORAGE › CONNECTING).'),
+          h('p', { class: 'info' }, 'The pedal keeps the previous version as a fallback. A backup of your own is a good idea the first time.')),
+          [{ label: 'Cancel', onclick: function () { res(); } }, { label: '⬇ Backup first', onclick: function () { backup().catch(errToast); return false; } }, {
             label: 'Save', primary: true, onclick: async function () {
+              var b = busy('Getting the pedal ready…');
               try {
+                // Make sure the drive is there (switching storage mode on if needed).
+                try { await S.store.list('DATA').then(function (l) { if (!l.length) throw new Error('empty'); }); }
+                catch (e) { S.store = await getDrive(b); }
+                // Did the pedal save its memories since we loaded them? Then don't overwrite blindly.
+                b.set('Checking the pedal’s files…');
                 for (var k = 0; k < list.length; k++) {
-                  var x = list[k], counter = (x[2].counter + 2) >>> 0, bytes = RC0.serialize(x[1], counter);
+                  var x = list[k], c1 = 0, c2 = 0;
+                  try { c1 = RC0.readCounter(await S.store.read('DATA/' + x[0] + '1.RC0')); } catch (e) { }
+                  try { c2 = RC0.readCounter(await S.store.read('DATA/' + x[0] + '2.RC0')); } catch (e) { }
+                  if (Math.max(c1, c2) !== x[2].counter) {
+                    b.hide();
+                    var goOn = await new Promise(function (ok) {
+                      dialog('The pedal has newer changes', h('p', null, 'The pedal saved its ' + (x[0] === 'MEMORY' ? 'memories' : 'system settings') +
+                        ' after you loaded them (for example a recording or a WRITE on the pedal). Saving now replaces those changes with what you see in the editor.'),
+                        [{ label: 'Cancel', onclick: function () { ok(false); } }, { label: 'Save anyway', danger: true, onclick: function () { ok(true); } }]);
+                    });
+                    b.show();
+                    if (!goOn) throw new Error('Cancelled');
+                    var pk = RC0.pickFiles(c1, c2, true, true);
+                    x[2].counter = Math.max(c1, c2); x[2].load = pk.load; x[2].write = pk.write;
+                  }
+                }
+                for (k = 0; k < list.length; k++) {
+                  x = list[k];
+                  var counter = (x[2].counter + 2) >>> 0, bytes = RC0.serialize(x[1], counter);
                   var path = 'DATA/' + x[0] + x[2].write + '.RC0';
+                  b.set('Writing ' + x[0] + x[2].write + '.RC0…');
                   await S.store.write(path, bytes);
                   var back = await S.store.read(path);
                   if (back.length !== bytes.length || back.some(function (v, n) { return v !== bytes[n]; })) throw new Error('Verification of ' + path + ' failed');
@@ -962,11 +1220,19 @@
                 }
                 S.files.memName = 'MEMORY' + f.mem.load + '.RC0'; S.files.sysName = 'SYSTEM' + f.sys.load + '.RC0';
                 S.origMem = RC0.clone(S.mem); S.origSys = RC0.clone(S.sys);
+                if (S.midi.connected && S.midi.sysexOk && S.storage) {
+                  b.set('Switching storage mode off…');
+                  await PF.sleep(1500); // let the computer finish writing to the drive
+                  await leaveStorage(true);
+                  b.close();
+                  toast('Saved and checked. The pedal has reloaded its memories.');
+                } else {
+                  b.close();
+                  dialog('Saved', h('div', null, h('p', null, 'Written and checked.'),
+                    h('p', null, PF.isAndroid ? 'Leave storage mode on the pedal (EXIT) so it reloads its memories.' : 'Eject the BOSS RC-500 drive, then leave storage mode on the pedal (EXIT) so it reloads its memories.')));
+                }
                 render();
-                dialog('Saved', h('div', null, h('p', null, 'Written and verified.'),
-                  h('p', null, PF.isAndroid ? 'Leave storage mode so the pedal reloads its memories.' : 'Eject the BOSS RC-500 drive, then leave storage mode so the pedal reloads its memories.')),
-                  [{ label: 'OK' }, S.midi.available() ? { label: 'Leave storage mode', primary: true, onclick: function () { storageMode(false); } } : null].filter(Boolean));
-              } catch (e) { errToast(e); }
+              } catch (e) { b.close(); if (e.message !== 'Cancelled') errToast(e); }
               res();
             }
           }]);
@@ -1010,33 +1276,21 @@
   function applyTheme() {
     var t = localStorage.getItem('rc500-theme') || 'auto';
     document.documentElement.dataset.theme = t;
-    $('btnTheme').textContent = t === 'dark' ? '🌙' : t === 'light' ? '☀️' : '🌓';
-    $('btnTheme').title = 'Theme: ' + t;
   }
 
   // ------------------------------------------------------------------ boot
   function boot() {
     try { applyTheme(); } catch (e) { }
-    $('btnTheme').onclick = function () {
-      var order = ['auto', 'light', 'dark'], cur = localStorage.getItem('rc500-theme') || 'auto';
-      try { localStorage.setItem('rc500-theme', order[(order.indexOf(cur) + 1) % 3]); } catch (e) { }
-      applyTheme();
-    };
-    $('btnOpen').onclick = openFolder;
-    $('btnFactory').onclick = openFactory;
+    $('btnLoad').onclick = function () { loadFromPedal(); };
     $('btnSave').onclick = function () { save().catch(errToast); };
-    $('btnBackup').onclick = function () { backup().catch(errToast); };
     $('btnUndo').onclick = function () { undoRedo(S.undo, S.redo, true); };
     $('btnRedo').onclick = function () { undoRedo(S.redo, S.undo, false); };
-    $('midistat').onclick = function () { S.page = 'remote'; render(); };
-    $('btnList').onclick = function () { document.body.classList.toggle('show-list'); };
+    $('btnMore').onclick = moreMenu;
+    $('status').onclick = function () { go('start'); };
+    $('memPick').onclick = function () { document.body.classList.add('show-list'); $('memfilter').value = ''; renderMemList(); };
+    $('btnCloseList').onclick = function () { document.body.classList.remove('show-list'); };
     $('memfilter').oninput = renderMemList;
-    $('dirinput').onchange = function (e) {
-      if (!e.target.files.length) return;
-      PF.Storage.fromFileList(e.target.files).then(loadFrom).catch(errToast);
-      e.target.value = '';
-    };
-    document.querySelectorAll('nav.tabs button').forEach(function (b) { b.onclick = function () { S.page = b.dataset.page; render(); }; });
+    document.querySelectorAll('nav.tabs button').forEach(function (b) { b.onclick = function () { go(b.dataset.page); }; });
     document.addEventListener('keydown', function (e) {
       if (!(e.ctrlKey || e.metaKey) || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoRedo(S.undo, S.redo, true); }
@@ -1044,17 +1298,23 @@
       if (e.key === 's') { e.preventDefault(); save().catch(errToast); }
     });
     window.addEventListener('beforeunload', function (e) { if (anyDirty()) { e.preventDefault(); e.returnValue = ''; } });
-    window.addEventListener('unhandledrejection', function (e) { errToast(e.reason); });
+    window.addEventListener('unhandledrejection', function (e) { if (e.reason && e.reason.message === 'Cancelled') return; errToast(e.reason); });
 
     S.mem = RC0.factoryMemory(); S.sys = RC0.factorySystem();
     S.origMem = RC0.clone(S.mem); S.origSys = RC0.clone(S.sys);
+    try { S.page = localStorage.getItem('rc500-page') || 'start'; } catch (e) { S.page = 'start'; }
     if (!window.isSecureContext && !PF.isAndroid) {
       var https = 'https://jonsolberg.github.io/bossrc500editor/';
-      $('banner').appendChild(h('div', { class: 'warn' }, 'This page is not served over https, so the browser blocks USB MIDI and direct writing. ',
+      $('banner').appendChild(h('div', { class: 'warn' }, 'This page is not served over https, so the browser blocks USB MIDI and saving to the pedal. ',
         h('a', { href: https }, 'Open the https version'), ' for all features.'));
     }
     render();
-    PF.Storage.reopen().then(function (st) { if (st) return loadFrom(st); }).catch(function () { });
+    // Connect to the pedal and its drive by ourselves where that is possible without asking.
+    S.midi.autoConnect(function () { toast('Connected to ' + S.midi.name); afterConnect(); });
+    PF.Storage.openRemembered(false).then(function (st) {
+      if (!st) return;
+      return st.list('DATA').then(function (l) { if (l.length) return loadFrom(st); });
+    }).catch(function () { });
   }
 
   // Interface for js/direct.js
@@ -1062,14 +1322,14 @@
     S: S, h: h, P: P, RC0: RC0, pad2: pad2, mget: mget, mset: mset, sget: sget, blk: blk, rxCh: rxCh,
     midiSend: midiSend, connectMidi: connectMidi, render: render, begin: begin, commit: commit,
     toast: toast, dialog: dialog, selectMemory: selectMemory,
-    go: function (p) { S.page = p; render(); }
+    go: go, loadFromPedal: loadFromPedal, leaveStorage: leaveStorage
   };
 
   // Android back button: close dialogs / list first.
   window.rc500Back = function () {
     var m = document.querySelector('.modal-back'); if (m) { m.remove(); return true; }
     if (document.body.classList.contains('show-list')) { document.body.classList.remove('show-list'); return true; }
-    if (S.page !== 'memory') { S.page = 'memory'; render(); return true; }
+    if (S.page !== 'start') { go('start'); return true; }
     return false;
   };
 
