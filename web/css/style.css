@@ -261,7 +261,7 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .jack { width: 44px; height: 22px; border-radius: 4px 4px 0 0; background: linear-gradient(90deg, #8d9095, #e6e8eb 45%, #9a9da2); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); z-index: -1; }
 .jack.mini { width: 22px; height: 12px; border-radius: 3px 3px 0 0; }
 .jack.black { background: linear-gradient(90deg, #111214, #3a3c40 45%, #141517); box-shadow: inset 0 -2px 0 rgba(0,0,0,.5), 0 0 0 1px #55585e; }
-.xlr { width: 76px; height: 6px; border-radius: 1px; background: #0c0c0d; box-shadow: 0 0 0 1px #55585e; z-index: -1; }
+.xlr { width: 76px; height: 6px; border-radius: 1px; background: linear-gradient(90deg, #111214, #3a3c40 45%, #141517); box-shadow: inset 0 -2px 0 rgba(0,0,0,.5), 0 0 0 1px #55585e; z-index: -1; }
 .jlabel { font-size: 14px; font-weight: 600; letter-spacing: .3px; color: var(--muted); white-space: nowrap; font-family: system-ui, sans-serif; }
 .jlabel.grp { font-size: 15px; font-weight: 700; color: var(--text); }
 .logo { transform: translate(-100%, -50%) !important; display: flex; align-items: baseline; gap: 14px; font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; white-space: nowrap; }
