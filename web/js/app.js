@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.33';
+  var VERSION = '2.34';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -608,11 +608,11 @@
       card('Memory ranges', [h('p', { class: 'info' }, 'Limits which memories a footswitch set to “Next memory” or “Previous memory” steps through – for example a set list in memories 10–15, so you don’t have to step past the others. You can keep five ranges and switch between them with a switch set to “Next memory range”. The pedal calls this EXTENT.'), sSel('Range in use', 'SETUP', 'ExtentCh', L.extent), h('p', { class: 'info' }, 'First and last memory of each range:')].concat(ext)),
       card('Pedal data', [
         h('p', { class: 'info' }, 'Backups, other sources for the memories and a read-only view of the stored values.'),
-        h('div', { class: 'btnrow wrap' },
-          h('button', { disabled: !S.store, onclick: function () { backup().catch(errToast); } }, '⬇ Back up the pedal’s data'),
-          h('button', { onclick: openFolder }, '📁 Open a backup or folder…'),
-          h('button', { onclick: openFactory }, '🏭 Start from factory settings'),
-          h('button', { onclick: storedValuesDialog }, '🔍 Show stored values'))
+        h('div', { class: 'datagrid' },
+          h('button', { disabled: !S.store, onclick: function () { backup().catch(errToast); }, title: S.store ? 'Save all memories and settings as a ZIP file' : 'Load the memories from the pedal first' }, 'Back up the pedal’s data'),
+          h('button', { onclick: openFolder, title: 'Load a backup ZIP, or a ROLAND folder copied from the pedal' }, 'Open a backup or folder…'),
+          h('button', { onclick: openFactory, title: 'Begin from the pedal’s factory settings' }, 'Start from factory settings'),
+          h('button', { onclick: storedValuesDialog, title: 'The raw numbers stored for the memory and the system' }, 'Show stored values'))
       ]),
       card('Input / output', [
         sChk('Phantom power', 'INPUT', 'Phantom', 'Power for condenser microphones on MIC IN.'),
