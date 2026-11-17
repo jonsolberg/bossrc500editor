@@ -362,11 +362,10 @@
         h('button', { disabled: !conn, onclick: function () { A.midiSend([0xFA]); ['1', '2'].forEach(function (t) { if (sim.tr[t].st === 'stop') sim.tr[t].st = 'play'; }); if (sim.rhythm === 'ready') sim.rhythm = 'on'; updateLights(); }, title: 'MIDI Start: start all tracks' }, '▶ All start'),
         h('button', { disabled: !conn, onclick: function () { A.midiSend([0xFC]); ['1', '2'].forEach(function (t) { var s = sim.tr[t]; if (s.st !== 'empty') s.st = 'stop'; }); updateLights(); }, title: 'MIDI Stop: stop everything' }, '■ All stop'),
         have.fx ? h('button', { id: 'fxbtn', class: sim.fx ? 'on' : '', disabled: !conn, onclick: loopFx, title: 'Loop FX on/off (key: F)' }, 'LOOP FX') : null,
-        h('button', { onclick: setupDialog }, 'Set up memories…'),
-        h('button', { onclick: function () { resetSim(); A.render(); }, title: 'Reset the lights to the memory’s saved state' }, '↺ Lights'))),
-    notes, wrap, clockStrip(conn),
+        h('button', { onclick: setupDialog }, 'Set up memories…'))),
+    notes, wrap, lightsBar(conn), clockStrip(conn),
     h('p', { class: 'info keyhelp' }, 'Keys: Space = REC/PLAY (hold: undo), S = STOP (hold: clear), T = TRACK SELECT, R = rhythm, Enter = tap tempo, F = loop FX, ↑/↓ = memory. ' +
-      'The pedal reports when tracks have a phrase and when playback starts or stops; the rest (record/overdub, track select) follows your presses here. Use ↺ Lights if they get out of step. ' +
+      'The pedal reports when tracks have a phrase and when playback starts or stops; the rest (record/overdub, track select) follows your presses here. Use Reset lights if they get out of step. ' +
       'The on-screen track sliders set the level on the pedal, but they can’t follow the pedal’s own sliders: the RC-500 doesn’t send those over USB.')];
   }
 
@@ -389,6 +388,19 @@
     blink();
     if (taps.length >= 2) setClock(60000 / ((now - taps[0]) / (taps.length - 1)), true);
   }
+  /** "Reset lights", next to the pedal, with the reason behind an ⓘ. */
+  function lightsBar(conn) {
+    var h = A.h;
+    var hint = h('p', { class: 'info lighthint', hidden: true },
+      'The pedal reports which tracks have a recording and when playback starts and stops – but not which track you selected on the pedal, or when it goes from recording to playing or overdubbing. ',
+      'If you also press the pedal’s own switches, the lights here can get out of step. Reset lights puts them back to the memory’s saved state. Changing memory does the same.');
+    return h('div', { class: 'lightsbar' },
+      h('div', { class: 'lbrow' },
+        h('button', { class: 'small', disabled: !conn, onclick: function () { resetSim(); A.render(); A.toast('Lights reset'); } }, '↺ Reset lights'),
+        h('button', { class: 'ib', type: 'button', 'aria-label': 'Why?', title: 'Why would the lights be wrong?', onclick: function () { hint.hidden = !hint.hidden; } }, 'i')),
+      hint);
+  }
+
   function clockStrip(conn) {
     var h = A.h, m = A.S.midi;
     if (clockBpm === null) clockBpm = sim.tempo;

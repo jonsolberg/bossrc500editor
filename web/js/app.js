@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.17';
+  var VERSION = '2.18';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -983,7 +983,7 @@
         h('dt', null, 'Direct'), h('dd', null, 'Play the pedal from its panel on screen. The panel stays grey until an RC-500 is connected. ',
           'The pedal only reacts to the screen through a memory’s Assign slots, so first use “Set up memories…” and save to the pedal. ',
           'Hold REC/PLAY to undo and STOP to clear (2 seconds). Tempo is sent as MIDI clock and needs no setup. ',
-          'The pedal reports which tracks have a recording and when playback starts and stops; the other lights follow your presses (↺ Lights resets them). ',
+          'The pedal reports which tracks have a recording and when playback starts and stops; the other lights follow your presses (Reset lights, under the pedal, puts them right). ',
           'The track sliders set the levels on the pedal, but can’t follow the pedal’s own sliders – the RC-500 doesn’t send those over USB.'),
         h('dt', null, 'Memory'), h('dd', null, 'Everything in the memory picked in the list: tracks, recording, playback, loop FX, rhythm, what the switches and pedals do, and the eight Assign slots. Copy, paste, swap and presets are at the top (⋯ on a phone).'),
         h('dt', null, 'Loops'), h('dd', null, 'Which memories have recordings. Play them, save them as WAV, import any audio file or delete them.'),
