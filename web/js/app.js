@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.43';
+  var VERSION = '2.44';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -628,7 +628,7 @@
   // Android keeps showing a drive it has mounted even after the pedal has left storage mode, so there we also
   // ask the pedal: when it says it's in play mode, the drive isn't really there.
   function pedalSaysNoDrive() { return PF.isAndroid && S.midi.connected && S.midi.sysexOk && !S.storage; }
-  async function driveReachable(view) { if (pedalSaysNoDrive()) return false; try { return !!view && (await view.list('DATA')).length > 0; } catch (e) { return false; } }
+  async function driveReachable(view) { if (pedalSaysNoDrive()) return false; try { return !!view && (await Promise.race([view.list('DATA'), new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 5000); })])).length > 0; } catch (e) { return false; } }
 
   /**
    * The loops live on the pedal's USB drive, so it has to be in storage mode. Stop the pedal, switch it to
@@ -730,7 +730,10 @@
   }
 
   async function readLoopFile(path) {
-    try { return await LS().read(path); }
+    try {
+      // A drive Android still shows after the pedal left storage mode can hang instead of failing: give up after 20 s.
+      return await Promise.race([LS().read(path), new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 20000); })]);
+    }
     catch (e) {
       // The drive is gone (the pedal left storage mode, or was unplugged): offer to open it again.
       if (!(await driveReachable(LS()))) { S.loopDriveGone = true; S.loopTried = false; render(); throw new Error('The pedal’s drive isn’t available any more – it has left storage mode.'); }
