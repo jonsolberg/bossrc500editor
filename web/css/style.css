@@ -334,6 +334,7 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .pill.white { background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.9); }
 .pill.red { background: #ff2a2a; box-shadow: 0 0 12px #ff2a2a; }
 .pill.green { background: #46ff8a; box-shadow: 0 0 12px #46ff8a; }
+.pill.blue { background: #5f84ff; box-shadow: 0 0 12px #5f84ff; }
 .pill.yellow { background: #ffe14a; box-shadow: 0 0 12px #ffe14a; }
 /* Footswitch drawn like the one in Iridium Control: chrome nut ring, dark gap, brushed cap, shiny dome. */
 .stomp { position: relative; margin-top: 22px; width: 88px; height: 88px; border-radius: 50%;

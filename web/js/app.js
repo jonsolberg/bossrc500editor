@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.19';
+  var VERSION = '2.20';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -1260,14 +1260,21 @@
     try { v = await PF.Storage.openRemembered(false); if (v && await reachable(v)) return v; }
     catch (e) { if (e && e.code === 'needs-permission') needPerm = true; }
 
-    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect;
+    var auto = S.midi.connected && S.midi.sysexOk && PF.Storage.canWriteDirect, why = '';
+    if (!auto && S.midi.connected && !S.midi.sysexOk) why = 'the browser didn’t allow SysEx messages, which the editor needs to switch the mode.';
     if (auto) {
       b.set('Switching the pedal to storage mode…');
       if (storageLock) throw new Error('The pedal is already switching storage mode – try again in a moment.');
       storageLock = true;
       try {
         var on = (await S.midi.queryEditMode()) === 1;
-        if (!on) { var r = await S.midi.setEditMode(true); on = r.ok; if (on) S.autoStorage = true; }
+        if (!on) {
+          var r = await S.midi.setEditMode(true); on = r.ok; if (on) S.autoStorage = true;
+          else why = r.last === -1 ? 'The pedal didn’t answer the request to switch to storage mode.'
+            : r.last === 2 ? 'The pedal was still busy switching when the editor gave up waiting.'
+            : 'The pedal answered but stayed in play mode – it may not switch while it plays or shows a menu.';
+          if (why) logMidi('mark', null, '──── storage mode: ' + why + ' ────');
+        }
       } finally { storageLock = false; }
       if (on) {
         S.storage = true;
@@ -1283,7 +1290,8 @@
     }
     b.hide();
     try {
-      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' : MANUAL_STORAGE), needPerm);
+      return await askForDrive(h('p', null, auto ? 'The pedal is in storage mode now.' : MANUAL_STORAGE,
+        why ? h('br') : null, why ? h('small', null, 'Couldn’t switch it automatically: ' + why) : null), needPerm);
     } finally { b.show(); }
   }
 

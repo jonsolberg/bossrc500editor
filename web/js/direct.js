@@ -14,7 +14,7 @@
 
   var FUNCS = [
     { id: 'rec', cc: 80, target: 'CUR REC/PLY', label: 'REC/PLAY switch', def: true },
-    { id: 'stop', cc: 81, target: 'CUR PLY/STP', label: 'STOP switch', def: true },
+    { id: 'stop', cc: 81, target: 'CUR STOP', old: 'CUR PLY/STP', label: 'STOP switch', def: true },
     { id: 'trk', cc: 82, target: 'TRK SELECT', label: 'TRACK SELECT switch and track EDIT buttons', def: true, min: 0, max: 1 },
     { id: 'lvl1', cc: 83, target: 'T1 LEVEL1', label: 'TRACK 1 slider', def: true, min: 0, max: 200 },
     { id: 'lvl2', cc: 84, target: 'T2 LEVEL1', label: 'TRACK 2 slider', def: true, min: 0, max: 200 },
@@ -44,7 +44,12 @@
       var sec = 'ASSIGN' + a;
       if (!g(sec, 'Sw')) continue;
       var src = g(sec, 'Source'), tgt = g(sec, 'Target');
-      FUNCS.forEach(function (f) { if (src === srcIndex(f.cc) && tgt === tgtIndex(f.target)) have[f.id] = true; });
+      FUNCS.forEach(function (f) {
+        if (src !== srcIndex(f.cc)) return;
+        if (tgt === tgtIndex(f.target)) have[f.id] = true;
+        // set up by an older version: STOP as PLY/STP, which needs two presses to stop a new recording
+        else if (f.old && tgt === tgtIndex(f.old)) { have[f.id] = true; have[f.id + 'Old'] = a; }
+      });
     }
     return have;
   }
@@ -116,6 +121,7 @@
           A.begin();
           for (var mi = a; mi <= b; mi++) {
             var have = installed(mi, true);
+            FUNCS.forEach(function (f) { if (have[f.id + 'Old'] && want.indexOf(f) >= 0) A.mset('ASSIGN' + have[f.id + 'Old'], 'Target', tgtIndex(f.target), mi); });
             var need = want.filter(function (f) { return !have[f.id]; });
             if (!need.length) { done++; continue; }
             var free = [];
@@ -254,6 +260,7 @@
     document.getElementById('lcdno').textContent = A.pad2(A.S.cur + 1);
     var nm = nameRows(); document.getElementById('lcdn1').textContent = nm[0]; document.getElementById('lcdn2').textContent = nm[1];
     var rl = document.getElementById('recled'); if (rl) rl.className = 'pill ' + recLed();
+    var tl = document.getElementById('trkled'); if (tl) tl.className = 'pill ' + (sim.cur === 2 ? 'blue' : 'red');
     var te = document.getElementById('lcdtempo'); if (te && (A.S.midi.clockRunning || performance.now() - clock.last > 1500)) te.textContent = '♩' + shownTempo().toFixed(1);
     var cs = document.getElementById('clockstrip'); if (cs) cs.classList.toggle('on', !!A.S.midi.clockRunning);
     [1, 2].forEach(function (t) {
@@ -293,17 +300,18 @@
       have.undo ? function () { press(fn('undo')); setTimeout(function () { release(fn('undo')); }, 60); A.toast('Undo/redo'); } : null, 'Space', 'recled', recLed());
     var stop = footswitch('STOP', ok('stop'), function () {
       // The pedal's ASSIGN target is PLY/STP (a toggle), so only send it when the track is going.
-      // While a new loop is being recorded, PLY/STP first ends the recording and starts playback,
-      // so it takes a second PLY/STP to stop – the real STOP switch does both in one press.
+      // STOP is assigned to CUR STOP, which stops at once like the real switch. Memories set up by an
+      // older version use CUR PLY/STP: while a new loop is recorded, that first ends the recording and
+      // starts playback, so it takes a second press to stop.
       var t = sim.tr[sim.cur], f = fn('stop');
-      function tapStop(after) { setTimeout(function () { press(f); setTimeout(function () { release(f); }, 60); }, after); }
-      if (t.st === 'rec') { tapStop(0); tapStop(180); t.st = 'stop'; }
-      else if (t.st === 'play' || t.st === 'dub') { tapStop(0); t.st = 'stop'; }
+      function tapStop(after) { setTimeout(function () { press(f); setTimeout(function () { release(f); }, 40); }, after); }
+      if (t.st === 'rec' && have.stopOld) { tapStop(0); tapStop(90); t.st = 'stop'; }
+      else if (t.st === 'rec' || t.st === 'play' || t.st === 'dub') { tapStop(0); t.st = 'stop'; }
       t.stopAt = performance.now();
       updateLights();
     },
       have.clear ? function () { press(fn('clear')); setTimeout(function () { release(fn('clear')); }, 60); sim.tr[sim.cur].st = 'empty'; updateLights(); A.toast('Track ' + sim.cur + ' cleared'); } : null, 'S (hold: clear)', 'stopled', 'white');
-    var sel = footswitch('TRACK\nSELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T', 'trkled', 'red');
+    var sel = footswitch('TRACK\nSELECT', ok('trk'), function () { sim.cur = 3 - sim.cur; cc(fn('trk').cc, sim.cur === 2 ? 127 : 0); updateLights(); }, null, 'T', 'trkled', sim.cur === 2 ? 'blue' : 'red');
     keyActions = { ' ': rec, s: stop, t: sel };
 
     var panel = h('div', { class: 'rcpanel' + (conn ? '' : ' off'), 'aria-disabled': conn ? null : 'true' },
@@ -367,6 +375,8 @@
     var pendingSave = FUNCS.filter(function (f) { return f.def && !have[f.id]; }).length && !FUNCS.filter(function (f) { return f.def && !installed(mi, true)[f.id]; }).length;
     if (pendingSave) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is set up here, but not saved to the pedal yet. Save, put the file on the pedal and leave storage mode — then the controls work.')));
     else if (missing) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' is not set up for Direct mode yet (' + missing + ' of the switches have no ASSIGN).'),
+      h('button', { onclick: setupDialog }, 'Set up memories…')));
+    else if (have.stopOld) notes.push(h('div', { class: 'dnote' }, h('span', null, 'Memory ' + (mi + 1) + ' was set up by an older version, where STOP needs a moment to stop a new recording. Set up the memories again and save to make STOP stop at once.'),
       h('button', { onclick: setupDialog }, 'Set up memories…')));
 
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'DIRECT')),
