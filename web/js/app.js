@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.30';
+  var VERSION = '2.31';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -702,7 +702,8 @@
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'LOOPS')),
       h('div', { class: 'tools' },
         h('label', { class: 'inl' }, h('input', { type: 'checkbox', checked: onlyUsed, onchange: function (e) { S.loopsOnlyUsed = e.target.checked; render(); } }), ' Only memories with loops'),
-        h('button', { onclick: function () { S.loops = null; render(); } }, '↻ Rescan'))),
+        h('button', { onclick: function () { S.loops = null; render(); } }, '↻ Rescan'),
+        LS().writable ? h('button', { class: 'danger', onclick: deleteAllLoops }, 'Delete all…') : null)),
     h('p', { class: 'info' }, 'Imported audio is converted to the RC-500 format (44.1 kHz, 32-bit float, stereo) and copied to ROLAND/WAVE/<memory>_<track>. ' +
       (LS().writable ? 'The pedal picks up the new phrase when you leave storage mode.' : 'Read-only folder: imports are downloaded, copy them into the folder shown.')),
     h('table', { class: 'loops' }, h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'Memory'), h('th', null, 'Track 1'), h('th', null, 'Track 2'))), h('tbody', null, rows))];
@@ -799,6 +800,41 @@
       h('p', null, what + ' The memory on the pedal must be updated as well (it stores whether the track has a phrase and how long it is) – otherwise the pedal reports “data damaged”.'),
       h('p', { class: 'info' }, 'Save now, or later with Save to pedal.')),
       [{ label: 'Later' }, { label: 'Save now', primary: true, onclick: function () { setTimeout(function () { save().catch(errToast); }, 0); } }]);
+  }
+  /** Delete every phrase on the pedal (e.g. to make room for the next BOSS TONE STUDIO track set). */
+  function deleteAllLoops() {
+    var list = [];
+    for (var i = 0; i < 99; i++) for (var t = 1; t <= 2; t++) if (S.loops && S.loops[i] && S.loops[i][t]) list.push([i, t]);
+    if (!list.length) { toast('There are no loops to delete'); return; }
+    dialog('Delete all loops?', h('div', null,
+      h('p', null, 'Delete all ' + list.length + ' phrases on the pedal? This cannot be undone – export the ones you want to keep first.'),
+      h('p', { class: 'info' }, 'The memories are updated to match; save them to the pedal afterwards.')),
+      [{ label: 'Cancel' }, {
+        label: 'Delete ' + list.length + ' phrases', danger: true, onclick: async function () {
+          var b = busy('Deleting…');
+          try {
+            S.driveWritten = true;
+            // Start from the memories as they are on the pedal now (BOSS TONE STUDIO may have changed them).
+            var view = LS();
+            if (!anyDirty()) {
+              b.set('Reading the memories…');
+              try { await loadFrom(view); } catch (e) { }
+              S.loopStore = view; S.loopDriveGone = false;
+            }
+            begin();
+            for (var k = 0; k < list.length; k++) {
+              var i = list[k][0], t = list[k][1], dir = loopDir(i, t);
+              b.set('Deleting ' + (k + 1) + ' of ' + list.length + '…');
+              var files = (await LS().list(dir)).filter(function (f) { return !f.dir && /\.wav$/i.test(f.name); });
+              for (var n = 0; n < files.length; n++) await LS().remove(dir + '/' + files[n].name);
+              mset('TRACK' + t, 'WavStat', 0, i); mset('TRACK' + t, 'WavLen', 0, i);
+            }
+            commit();
+            S.loops = null; b.close(); render();
+            savePhraseInfo('Deleted ' + list.length + ' phrases.');
+          } catch (e) { commit(); b.close(); S.loops = null; render(); errToast(e); }
+        }
+      }]);
   }
   function deleteLoop(i, t, f) {
     dialog('Delete phrase?', h('p', null, 'Delete ' + f.name + ' from memory ' + (i + 1) + ', track ' + t + '? This cannot be undone.'),
