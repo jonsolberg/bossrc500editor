@@ -398,3 +398,16 @@ select.dim { opacity: .55; }
 
 .helpdl dt { font-weight: 700; margin-top: 10px; }
 .helpdl dd { margin: 2px 0 0 0; color: var(--muted); }
+
+/* connection light: a USB plug, green when the pedal is connected */
+.status .plug, .statuspop .plug { display: inline-flex; color: #8a9099; flex: none; }
+.status .plug.ok, .statuspop .plug.ok { color: var(--ok); filter: drop-shadow(0 0 4px var(--ok)); }
+.statuspop { width: min(330px, calc(100vw - 16px)); padding: 10px; }
+.statuspop .srow { display: flex; gap: 10px; align-items: flex-start; padding: 6px 4px; }
+.statuspop .srow b { display: block; }
+.statuspop .srow small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.35; margin-top: 1px; }
+.statuspop .sicon { width: 16px; text-align: center; flex: none; }
+.statuspop .sicon.dirty { color: var(--dirty); }
+.statuspop .sbtns { display: flex; gap: 8px; padding: 8px 4px 2px; }
+.statuspop .sbtns button { background: var(--panel2); border: 1px solid var(--line); text-align: center; padding: 7px 14px; }
+.statuspop .sbtns button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }

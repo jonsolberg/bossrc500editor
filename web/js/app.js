@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.15';
+  var VERSION = '2.16';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -191,19 +191,21 @@
   function sChk(label, sec, key, hint) { cover('sys', sec, key, label); var f = Sy(sec, key); return row(label, chk(f.v, f.set), hint); }
 
   // ------------------------------------------------------------------ chrome (header + memory list)
+  var PLUG_SVG = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M12 15l-5-3V9M12 13l5-3V8"/></g><g fill="currentColor"><path d="M12 1.5l2.6 3.5H9.4z"/><circle cx="12" cy="20" r="2.2"/><circle cx="7" cy="7.6" r="1.7"/><rect x="15.4" y="4.9" width="3.2" height="3.2" rx=".4"/></g></svg>';
+  function pedalOk() { return S.midi.connected && /RC-?500|BOSS|Roland/i.test(S.midi.name || 'RC-500'); }
   function refreshChrome() {
     var dirty = anyDirty();
     var st = $('status');
     st.innerHTML = '';
     add(st, [
-      h('span', { class: 'dot ' + (S.midi.connected ? 'ok' : 'off') }),
+      h('span', { class: 'plug ' + (S.midi.connected ? 'ok' : 'off'), html: PLUG_SVG }),
       h('span', { class: 'only-wide' }, !S.midi.connected ? 'Pedal not connected' : /RC-?500|BOSS|Roland/i.test(S.midi.name || 'RC-500') ? 'Pedal connected' : 'Connected to ' + S.midi.name + ' (not an RC-500)'),
       h('span', { class: 'sep only-wide' }, '·'),
       h('span', { class: 'only-wide' }, S.store ? 'Memories from your pedal' : 'Factory settings'),
       dirty ? h('span', { class: 'unsaved' }, 'unsaved') : null
     ]);
     st.title = (S.midi.connected ? 'Connected to ' + S.midi.name : 'The pedal is not connected over USB') + ' — ' +
-      (S.store ? 'editing the memories loaded from the pedal' + (S.files ? ' (' + S.files.memName + ')' : '') : 'editing factory settings, not your pedal') + '. Click for the Start page.';
+      (S.store ? 'editing the memories loaded from the pedal' + (S.files ? ' (' + S.files.memName + ')' : '') : 'editing factory settings, not your pedal') + '. Tap for details.';
     $('memPick').innerHTML = '';
     if (S.mem) add($('memPick'), [h('b', null, pad2(S.cur + 1)), ' ' + RC0.memName(blk()).trim(), h('span', { class: 'caret' }, '▾')]);
     $('btnUndo').disabled = !S.undo.length; $('btnRedo').disabled = !S.redo.length;
@@ -224,6 +226,31 @@
     var top = r.bottom + 6;
     if (top + m.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - m.offsetHeight - 6);
     m.style.left = left + 'px'; m.style.top = top + 'px';
+  }
+
+  /** Tap on the connection light: what is connected, what is being edited, and the next useful action. */
+  function statusPopup() {
+    var anchor = $('status');
+    var back = h('div', { class: 'menu-back', onclick: function (e) { if (e.target === back) back.remove(); } });
+    var close = function () { back.remove(); };
+    var conn = S.midi.connected, ok = pedalOk();
+    var box = h('div', { class: 'menu statuspop', role: 'dialog' },
+      h('div', { class: 'srow' }, h('span', { class: 'plug ' + (conn ? 'ok' : 'off'), html: PLUG_SVG }),
+        h('div', null, h('b', null, !conn ? 'Pedal not connected' : ok ? 'Pedal connected' : 'Not an RC-500'),
+          h('small', null, !conn ? 'Connect the RC-500 with a USB cable that carries data.' : S.midi.name + (S.storage ? ' · in storage mode' : '')))),
+      h('div', { class: 'srow' }, h('span', { class: 'sicon' }, S.store ? '⤓' : '🏭'),
+        h('div', null, h('b', null, S.store ? 'Memories from your pedal' : 'Factory settings'),
+          h('small', null, S.store ? (S.files ? 'Loaded from ' + S.files.memName : 'Loaded from a backup or folder') : 'Not your pedal’s memories – use Load from pedal to edit yours.'))),
+      anyDirty() ? h('div', { class: 'srow' }, h('span', { class: 'sicon dirty' }, '●'),
+        h('div', null, h('b', null, 'Unsaved changes'), h('small', null, 'Save to pedal writes them to the pedal.'))) : null,
+      h('div', { class: 'sbtns' },
+        !conn ? h('button', { class: 'primary', onclick: function () { close(); connectMidi(); } }, 'Connect') : null,
+        conn ? h('button', { onclick: function () { close(); S.midi.disconnect(); render(); } }, 'Disconnect') : null,
+        h('button', { onclick: function () { close(); go('start'); } }, 'Start page')));
+    back.appendChild(box); document.body.appendChild(back);
+    var r = anchor.getBoundingClientRect();
+    box.style.left = Math.max(8, Math.min(window.innerWidth - box.offsetWidth - 8, r.left)) + 'px';
+    box.style.top = (r.bottom + 6) + 'px';
   }
 
   function moreMenu() {
@@ -1339,7 +1366,7 @@
     $('btnUndo').onclick = function () { undoRedo(S.undo, S.redo, true); };
     $('btnRedo').onclick = function () { undoRedo(S.redo, S.undo, false); };
     $('btnMore').onclick = moreMenu;
-    $('status').onclick = function () { go('start'); };
+    $('status').onclick = statusPopup;
     $('memPick').onclick = function () { document.body.classList.add('show-list'); $('memfilter').value = ''; renderMemList(); };
     $('btnCloseList').onclick = function () { document.body.classList.remove('show-list'); };
     $('memfilter').oninput = renderMemList;
