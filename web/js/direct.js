@@ -153,7 +153,7 @@
     var val = sim.lvl[t];
     var thumb = h('div', { class: 'vthumb' });
     var ticks = h('div', { class: 'vticks' }); for (var i = 0; i < 7; i++) ticks.appendChild(h('i'));
-    var track = h('div', { class: 'vtrack' + (enabled ? '' : ' dis'), title: enabled ? 'Track ' + t + ' level' : 'Set up Direct mode to use the slider' }, ticks, h('div', { class: 'vgroove' }), thumb);
+    var track = h('div', { class: 'vtrack' + (enabled ? '' : ' dis'), title: enabled ? 'Track ' + t + ' level: sets the level on the pedal. The pedal does not report its own sliders, so this one does not follow them.' : 'Set up Direct mode to use the slider' }, ticks, h('div', { class: 'vgroove' }), thumb);
     function place(v) { thumb.style.bottom = 'calc(' + (v / 200 * 100) + '% - ' + (v / 200 * 30) + 'px)'; }
     place(val);
     var lastCc = -1;
@@ -360,7 +360,8 @@
         h('button', { onclick: function () { resetSim(); A.render(); }, title: 'Reset the lights to the memory’s saved state' }, '↺ Lights'))),
     notes, wrap, clockStrip(conn),
     h('p', { class: 'info keyhelp' }, 'Keys: Space = REC/PLAY (hold: undo), S = STOP (hold: clear), T = TRACK SELECT, R = rhythm, Enter = tap tempo, F = loop FX, ↑/↓ = memory. ' +
-      'The pedal reports when tracks have a phrase and when playback starts or stops; the rest (record/overdub, track select) follows your presses here. Use ↺ Lights if they get out of step.')];
+      'The pedal reports when tracks have a phrase and when playback starts or stops; the rest (record/overdub, track select) follows your presses here. Use ↺ Lights if they get out of step. ' +
+      'The on-screen track sliders set the level on the pedal, but they can’t follow the pedal’s own sliders: the RC-500 doesn’t send those over USB.')];
   }
 
   // ------------------------------------------------------------------ tempo: MIDI clock from the editor

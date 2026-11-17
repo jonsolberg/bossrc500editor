@@ -152,9 +152,9 @@ table.loops td.nm { font-family: ui-monospace, Consolas, monospace; white-space:
 
 .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 button.transport { font-size: 16px; padding: 10px 20px; }
-.ccpad { display: grid; grid-template-columns: 58px 1fr 120px; gap: 8px; align-items: center; margin: 6px 0; }
+.ccpad { display: grid; grid-template-columns: 50px 1fr 84px; gap: 8px; align-items: center; margin: 6px 0; }
 .ccn { color: var(--muted); font-variant-numeric: tabular-nums; }
-button.pad { padding: 12px; text-align: left; overflow: hidden; text-overflow: ellipsis; touch-action: none; user-select: none; }
+button.pad { padding: 8px 10px; text-align: left; white-space: normal; font-size: 13px; line-height: 1.25; min-height: 40px; touch-action: none; user-select: none; }
 button.pad.on { background: var(--accent); color: var(--accent-ink); }
 .midilog { font: 12.5px ui-monospace, Consolas, monospace; max-height: 420px; overflow-y: auto; margin-top: 8px; }
 .midilog .in { color: var(--accent); }
@@ -206,7 +206,7 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
   .only-wide { display: none !important; }
   body { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
   header.top { gap: 8px; padding: 6px 10px; padding-top: max(6px, env(safe-area-inset-top)); min-height: 52px; }
-  .brand svg { width: 20px; height: 20px; }
+  .brand .appicon { width: 22px; height: 22px; }
   button.mempick { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--panel2);
     font: 600 15px ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   button.mempick b { color: var(--accent); }
@@ -360,3 +360,9 @@ ul.dl { list-style: none; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; 
 .holdhint { margin-top: 12px; font: 600 13px/1 "Helvetica Neue", Arial, sans-serif; color: rgba(255,255,255,.75); letter-spacing: .5px; }
 select.dim { opacity: .55; }
 .row .warnnote { flex-basis: 100%; font-size: 12px; }
+
+/* label above a full-width control (long option names) */
+.row.stack { grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 5px 0; }
+.row.stack > label { color: var(--text); }
+.brand .appicon { display: block; border-radius: 5px; }
+@media (max-width: 819px) { .status .unsaved { display: none; } .brand .appicon { display: none; } }

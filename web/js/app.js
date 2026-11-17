@@ -6,7 +6,7 @@
   'use strict';
 
   var P = window.RC500P, L = P.L, RC0 = window.RC0, PF = window.RCPlatform, AU = window.RCAudio;
-  var VERSION = '2.0';
+  var VERSION = '2.1';
 
   // ------------------------------------------------------------------ state
   var S = {
@@ -383,7 +383,8 @@
       var f = M('CTL', key);
       var s = sel(RCNames.options(list), f.v, f.set);
       if (usesSys) { s.classList.add('dim'); anySys = true; }
-      return row(label, [s, usesSys ? h('span', { class: 'note warnnote', title: 'This switch follows the system setting: ' + RCNames.plain(list[sget('CTL', key)]) }, 'uses system: ' + RCNames.plain(list[sget('CTL', key)])) : null]);
+      var r = row(label, [s, usesSys ? h('span', { class: 'note warnnote', title: 'This switch follows the system setting: ' + RCNames.plain(list[sget('CTL', key)]) }, 'uses system: ' + RCNames.plain(list[sget('CTL', key)])) : null]);
+      r.classList.add('stack'); return r;
     }
 
     return [head, h('div', { class: 'grid' },
@@ -515,7 +516,7 @@
         ext.push(row('EXT' + e, [sel(L.extVal, mn.v, mn.set), ' – ', sel(L.extVal, mx.v, mx.set)]));
       })(e);
     }
-    function sCtl(label, key, list) { var f = Sy('CTL', key); return row(label, sel(RCNames.options(list), f.v, f.set)); }
+    function sCtl(label, key, list) { var f = Sy('CTL', key); var r = row(label, sel(RCNames.options(list), f.v, f.set)); r.classList.add('stack'); return r; }
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'SYSTEM')),
       h('div', { class: 'tools' }, h('button', { class: 'danger', onclick: resetSystem }, 'Initialize system'))),
     h('div', { class: 'grid' },
@@ -778,7 +779,7 @@
       if (src < 12) continue;
       var name = L.assignSource[src], cc = +name.slice(3);
       var target = L.assignTarget[mget('ASSIGN' + a, 'Target')];
-      ccRows.push(ccPad(cc, target + (mget('ASSIGN' + a, 'Sw') ? '' : ' (assign off)'), mget('ASSIGN' + a, 'SourceMode')));
+      ccRows.push(ccPad(cc, RCNames.plain(target) + (mget('ASSIGN' + a, 'Sw') ? '' : ' (assign off)'), mget('ASSIGN' + a, 'SourceMode')));
     }
     var genCc = { n: S.genCc || 1, v: 127 };
     return [h('div', { class: 'memhead' }, h('div', { class: 'memtitle' }, h('span', { class: 'big' }, 'REMOTE')),

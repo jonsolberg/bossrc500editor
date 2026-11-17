@@ -11,18 +11,19 @@ no BOSS TONE STUDIO needed. Use it in the browser or as a standalone Android app
   <img src="docs/direct.webp" width="760" alt="Direct mode: the RC-500 panel on screen">
 </p>
 <p align="center">
-  <img src="docs/memory.webp" width="380" alt="Editing a memory">
-  <img src="docs/assign.webp" width="380" alt="ASSIGN 1–8">
+  <img src="docs/start.webp" width="380" alt="Start page: connect, load, edit and save">
+  <img src="docs/memory.webp" width="380" alt="Editing a memory, including ASSIGN 1–8">
+  <img src="docs/system.webp" width="380" alt="System settings">
   <img src="docs/loops.webp" width="380" alt="Loops: play, export and import">
   <img src="docs/remote.webp" width="380" alt="Remote over USB MIDI">
-  <img src="docs/system.webp" width="380" alt="System settings">
 </p>
 <p align="center">
-  <img src="docs/phone-direct.webp" width="250" alt="Direct mode on a phone">
-  <img src="docs/phone-memory.webp" width="250" alt="Editing on a phone">
+  <img src="docs/phone-start.webp" width="220" alt="Start page on a phone">
+  <img src="docs/phone-direct.webp" width="220" alt="Direct mode on a phone">
+  <img src="docs/phone-memory.webp" width="220" alt="Editing on a phone">
 </p>
 
-> ⚠️ Not affiliated with BOSS/Roland. Make a backup (the ⬇ Backup button) before you save to the pedal.
+> ⚠️ Not affiliated with BOSS/Roland. Make a backup (⋯ › Backup of the pedal’s data) before you save to the pedal.
 
 ## Features
 
@@ -83,8 +84,9 @@ while it runs when SYSTEM › MIDI › Sync clock is AUTO (the default) or USB. 
 don't start by themselves.
 
 Messages go out on the pedal's RX CTL channel (SYSTEM › MIDI). Memories are selected with program change, and
-MIDI Start/Stop start and stop everything. The pedal doesn't report its track states over MIDI, so the lights on
-screen follow your presses.
+MIDI Start/Stop start and stop everything. The pedal reports which tracks have a phrase and when playback starts
+and stops; the rest of the lights follow your presses. The on-screen track sliders set the level on the pedal,
+but they can't follow the pedal's own sliders: the RC-500 doesn't send those over USB.
 
 ### Using it
 
