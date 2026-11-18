@@ -68,7 +68,7 @@ Browsers only allow USB MIDI and writing to a drive on secure (https) pages. If 
 **Why not Safari, iPhone or iPad?** Safari has no Web MIDI, so it can't connect to the pedal, switch storage mode or
 play it in Direct mode. It also can't write to a folder or drive from a web page, so it can't save to the pedal. On
 iPhone and iPad every browser (Chrome and Firefox too) is built on Safari's engine and has the same limits. A
-native iOS app could do it, but there isn't one (contact me if you are interrested in developing one).
+native iOS app could do it, but there isn't one and it's currently out-of-scope for this project (however, you are more than welcome to contact me if you are interrested in developing one).
 
 ### Android
 
